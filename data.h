@@ -30,9 +30,3 @@ typedef struct {
     gchar *description;
     GList *games; /* [element-type: RinksGame] */
 } RinksRound;
-
-typedef struct {
-    gchar *description;
-    GList *rounds; /* [element-type: RinksRound] */
-    GList *teams;  /* [element-type: RinksTeam] */
-} RinksTournament;
