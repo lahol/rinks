@@ -37,6 +37,8 @@ void tournament_changed_cb(RinksTournament *tournament)
         tournament_close(current_tournament);
 
     current_tournament = tournament;
+
+    ui_select_view(VIEW_SETTINGS, current_tournament);
 }
 
 void menu_callback(gchar *action)

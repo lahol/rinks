@@ -1,9 +1,23 @@
 #include <glib/gprintf.h>
 #include "ui.h"
+#include "ui-dialog-settings.h"
 
 GtkWidget *main_window = NULL;
+GtkWidget *main_view = NULL;
 
 void (*_menu_callback)(gchar *) = NULL;
+
+GtkWidget *ui_get_current_view(void)
+{
+    if (main_view == NULL)
+        return NULL;
+
+    GtkWidget *viewport = gtk_bin_get_child(GTK_BIN(main_view));
+    if (viewport == NULL)
+        return NULL;
+
+    return gtk_bin_get_child(GTK_BIN(viewport));
+}
 
 void ui_set_action_callback(void (*callback)(gchar *action))
 {
@@ -15,6 +29,20 @@ static gboolean _delete_event(GtkWidget *widget, GdkEvent *event, gpointer data)
     gtk_main_quit();
 
     return FALSE;
+}
+
+static void ui_apply_button_clicked(GtkButton *button, gpointer userdata)
+{
+    g_printf("Button clicked\n");
+    GtkWidget *current = ui_get_current_view();
+
+    if (current == NULL)
+        return;
+
+    void (*apply_cb)(gpointer) = g_object_get_data(G_OBJECT(current), "apply-callback");
+
+    if (apply_cb)
+        apply_cb(NULL);
 }
 
 static void ui_activate_menu_item(GtkMenuItem *menu_item, gpointer userdata)
@@ -96,7 +124,7 @@ GtkWidget *ui_create_main_window(void)
 
     gtk_window_set_default_size(GTK_WINDOW(main_window), 640, 480);
 
-    GtkWidget *menubar, *grid, *pane, *child;
+    GtkWidget *menubar, *grid, *pane, *child, *vbox, *button;
 
     menubar = ui_create_main_menu();
 
@@ -108,8 +136,16 @@ GtkWidget *ui_create_main_window(void)
     child = ui_create_sidebar();
     gtk_paned_pack1(GTK_PANED(pane), child, FALSE, FALSE);
 
-    child = ui_create_main_view();
-    gtk_paned_pack2(GTK_PANED(pane), child, TRUE, TRUE);
+    main_view = ui_create_main_view();
+
+    vbox = gtk_vbox_new(FALSE, 0);
+    button = gtk_button_new_from_stock(GTK_STOCK_APPLY);
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(ui_apply_button_clicked), NULL);
+
+    gtk_box_pack_start(GTK_BOX(vbox), main_view, TRUE, TRUE, 0);
+    gtk_box_pack_end(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    gtk_paned_pack2(GTK_PANED(pane), vbox, TRUE, TRUE);
 
     gtk_box_pack_end(GTK_BOX(grid), pane, TRUE, TRUE, 0);
 
@@ -159,3 +195,26 @@ gchar *ui_get_filename(GtkFileChooserAction action)
     return filename;
 }
 
+void ui_select_view(UiViewType type, gpointer data)
+{
+    GtkWidget *new_view = NULL;
+    switch (type) {
+        case VIEW_SETTINGS:
+            new_view = ui_dialog_settings_open(data);
+            break;
+        case VIEW_TEAMS:
+            break;
+        default:
+            break;
+    }
+
+    if (main_view != NULL) {
+        GtkWidget *old_view = ui_get_current_view();
+        if (old_view != NULL) {
+            gtk_widget_hide(old_view);
+            gtk_container_remove(GTK_CONTAINER(main_view), old_view);
+        }
+        if (new_view != NULL)
+            gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(main_view), new_view);
+    }
+}
