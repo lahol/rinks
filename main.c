@@ -2,6 +2,8 @@
 #include <glib/gi18n.h>
 #include <glib/gprintf.h>
 #include "ui.h"
+#include "actions.h"
+#include "db.h"
 
 GtkWidget *main_window = NULL;
 void menu_callback(gchar *action);
@@ -14,6 +16,7 @@ void init(void)
 
 void cleanup(void)
 {
+    db_cleanup();
 }
 
 void menu_callback(gchar *action)
@@ -23,9 +26,11 @@ void menu_callback(gchar *action)
     }
     else if (g_strcmp0(action, "actions.new") == 0) {
         g_printf("New Tournament\n");
+        action_new_tournament();
     }
     else if (g_strcmp0(action, "actions.open") == 0) {
         g_printf("Open Tournament\n");
+        action_open_tournament();
     }
 }
 

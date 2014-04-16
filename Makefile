@@ -2,7 +2,7 @@ CC := gcc
 PKG_CONFIG := pkg-config
 
 CFLAGS = -Wall -g `$(PKG_CONFIG) --cflags glib-2.0 gtk+-2.0`
-LIBS += `$(PKG_CONFIG) --libs glib-2.0 gtk+-2.0`
+LIBS += `$(PKG_CONFIG) --libs glib-2.0 gtk+-2.0` -lsqlite3
 
 APPNAME := rinks
 PREFIX := /usr

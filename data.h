@@ -1,6 +1,16 @@
 #pragma once
 
-#include <glib/glib.h>
+#include <glib.h>
+
+typedef struct {
+    guint32 id;
+    guint32 group_id;
+    gchar *name;
+    gchar *skip;
+    guint32 points;
+    guint32 ends;
+    guint32 stones;
+} RinksTeam;
 
 typedef enum {
     ROUND_TYPE_NEXT_TO_GROUP,
@@ -24,4 +34,5 @@ typedef struct {
 typedef struct {
     gchar *description;
     GList *rounds; /* [element-type: RinksRound] */
+    GList *teams;  /* [element-type: RinksTeam] */
 } RinksTournament;
