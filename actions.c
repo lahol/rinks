@@ -1,17 +1,44 @@
 #include "actions.h"
 #include "db.h"
+#include "tournament.h"
 #include <glib/gprintf.h>
+#include <memory.h>
+#include "ui.h"
 
-void action_new_tournament(void)
+RinksActionCallbacks action_callbacks;
+
+RinksTournament *action_new_tournament(void)
 {
-    gint rc;
+    gchar *filename = ui_get_filename(GTK_FILE_CHOOSER_ACTION_SAVE);
+    if (filename == NULL)
+        return NULL;
 
-    rc = db_init_database("test.rinks");
+    RinksTournament *tournament = tournament_open(filename, TRUE);
+    g_free(filename);
 
-    if (rc != 0)
-        g_printf("init db error\n");
+    if (action_callbacks.handle_tournament_changed)
+        action_callbacks.handle_tournament_changed(tournament);
+
+    return tournament;
 }
 
-void action_open_tournament(void)
+RinksTournament *action_open_tournament(void)
 {
+    gchar *filename = ui_get_filename(GTK_FILE_CHOOSER_ACTION_OPEN);
+    if (filename == NULL)
+        return NULL;
+
+    RinksTournament *tournament = tournament_open("test.rinks", FALSE);
+    g_free(filename);
+
+    if (action_callbacks.handle_tournament_changed)
+        action_callbacks.handle_tournament_changed(tournament);
+
+    return tournament;
+}
+
+void action_set_callbacks(RinksActionCallbacks *callbacks)
+{
+    if (callbacks)
+        memcpy(&action_callbacks, callbacks, sizeof(RinksActionCallbacks));
 }

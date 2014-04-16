@@ -1,6 +1,8 @@
 #include <glib/gprintf.h>
 #include "ui.h"
 
+GtkWidget *main_window = NULL;
+
 void (*_menu_callback)(gchar *) = NULL;
 
 void ui_set_action_callback(void (*callback)(gchar *action))
@@ -88,11 +90,11 @@ GtkWidget *ui_create_main_view(void)
 
 GtkWidget *ui_create_main_window(void)
 {
-    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    GtkWidget *main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
-    g_signal_connect(window, "delete-event", G_CALLBACK(_delete_event), NULL);
+    g_signal_connect(main_window, "delete-event", G_CALLBACK(_delete_event), NULL);
 
-    gtk_window_set_default_size(GTK_WINDOW(window), 640, 480);
+    gtk_window_set_default_size(GTK_WINDOW(main_window), 640, 480);
 
     GtkWidget *menubar, *grid, *pane, *child;
 
@@ -111,9 +113,49 @@ GtkWidget *ui_create_main_window(void)
 
     gtk_box_pack_end(GTK_BOX(grid), pane, TRUE, TRUE, 0);
 
-    gtk_container_add(GTK_CONTAINER(window), grid);
+    gtk_container_add(GTK_CONTAINER(main_window), grid);
 
-    gtk_widget_show_all(window);
+    gtk_widget_show_all(main_window);
 
-    return window;
+    return main_window;
 }
+
+gchar *ui_get_filename(GtkFileChooserAction action)
+{
+    gchar *filename = NULL;
+
+    GtkWidget *dialog = gtk_file_chooser_dialog_new(action == GTK_FILE_CHOOSER_ACTION_OPEN ?
+            "Turnier öffnen" : "Turnier anlegen",
+            GTK_WINDOW(main_window), action,
+            "Abbrechen", GTK_RESPONSE_CANCEL,
+            "Auswählen", GTK_RESPONSE_ACCEPT,
+            NULL);
+
+    GtkFileFilter *filter;
+
+    filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "Turnier-Dateien");
+    gtk_file_filter_add_pattern(filter, "*.rnk");
+    gtk_file_filter_add_pattern(filter, "*.rinks");
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+
+    filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "Alle Dateien");
+    gtk_file_filter_add_pattern(filter, "*");
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+    
+    if (action == GTK_FILE_CHOOSER_ACTION_SAVE) {
+        gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "Neues Turnier.rnk");
+    }
+
+    gint res = gtk_dialog_run(GTK_DIALOG(dialog));
+
+    if (res == GTK_RESPONSE_ACCEPT) {
+        filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+    }
+
+    gtk_widget_destroy(dialog);
+
+    return filename;
+}
+

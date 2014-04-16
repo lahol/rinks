@@ -4,9 +4,8 @@
 
 typedef struct _RinksTournament RinksTournament;
 
-RinksTournament *tournament_create(gchar *filename);
-RinksTournament *tournament_open(gchar *filename);
+RinksTournament *tournament_open(gchar *filename, gboolean clear);
 void tournament_close(RinksTournament *tournament);
 
-void tournament_set_description(RinksTournament *tournament, gchar *description);
+void tournament_set_description(RinksTournament *tournament, const gchar *description);
 const gchar *tournament_get_description(RinksTournament *tournament);

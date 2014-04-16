@@ -4,19 +4,39 @@
 #include "ui.h"
 #include "actions.h"
 #include "db.h"
+#include "tournament.h"
 
-GtkWidget *main_window = NULL;
 void menu_callback(gchar *action);
+
+RinksTournament *current_tournament = NULL;
+
+void tournament_changed_cb(RinksTournament *tournament);
 
 void init(void)
 {
-    main_window = ui_create_main_window();
+    ui_create_main_window();
     ui_set_action_callback(menu_callback);
+
+    RinksActionCallbacks callbacks = {
+        .handle_tournament_changed = tournament_changed_cb
+    };
+
+    action_set_callbacks(&callbacks);
 }
 
 void cleanup(void)
 {
-    db_cleanup();
+    if (current_tournament)
+        tournament_close(current_tournament);
+}
+
+void tournament_changed_cb(RinksTournament *tournament)
+{
+    g_printf("Tournament changed\n");
+    if (current_tournament != NULL)
+        tournament_close(current_tournament);
+
+    current_tournament = tournament;
 }
 
 void menu_callback(gchar *action)

@@ -3,10 +3,12 @@
 #include <glib.h>
 #include "data.h"
 
-gint db_init_database(gchar *path);
-gint db_open_database(gchar *path);
-void db_cleanup(void);
+gpointer db_open_database(gchar *path, gboolean clear);
+void db_close_database(gpointer db_handle);
 
-void db_add_team(RinksTeam *team);
+void db_set_property(gpointer db_handle, const gchar *key, const gchar *value);
+const gchar *db_get_property(gpointer db_handle, const gchar *key);
 
-GList *db_get_teams(void);
+void db_add_team(gpointer db_handle, RinksTeam *team);
+
+GList *db_get_teams(gpointer db_handle);
