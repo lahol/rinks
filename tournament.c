@@ -26,6 +26,11 @@ void tournament_read_data(RinksTournament *tournament)
         tournament->rink_count = 1;
 }
 
+void tournament_update_database(RinksTournament *tournament)
+{
+    g_return_if_fail(tournament != NULL);
+}
+
 RinksTournament *tournament_open(gchar *filename, gboolean clear)
 {
     g_return_val_if_fail(filename != NULL, NULL);
@@ -73,4 +78,44 @@ const gchar *tournament_get_description(RinksTournament *tournament)
     g_return_val_if_fail(tournament != NULL, NULL);
 
     return tournament->description;
+}
+
+void tournament_set_rink_count(RinksTournament *tournament, gint rink_count)
+{
+    g_return_if_fail(tournament != NULL);
+
+    tournament->rink_count = rink_count;
+}
+
+gint tournament_get_rink_count(RinksTournament *tournament)
+{
+    g_return_val_if_fail(tournament != NULL, 0);
+
+    return tournament->rink_count;
+}
+
+void tournament_set_property(RinksTournament *tournament, const gchar *key, const gchar *value)
+{
+    g_return_if_fail(tournament != NULL);
+
+    if (g_strcmp0(key, "tournament.description") == 0) {
+        tournament_set_description(tournament, value);
+    }
+    else if (g_strcmp0(key, "tournament.rink-count") == 0) {
+        tournament_set_rink_count(tournament, value ? atoi(value) : 0);
+    }
+}
+
+gchar *tournament_get_property(RinksTournament *tournament, const gchar *key)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    if (g_strcmp0(key, "tournament.description") == 0) {
+        return g_strdup(tournament_get_description(tournament));
+    }
+    else if (g_strcmp0(key, "tournament.rink-count") == 0) {
+        return g_strdup_printf("%d", tournament_get_rink_count(tournament));
+    }
+
+    return NULL;
 }

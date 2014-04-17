@@ -5,10 +5,9 @@
 #include "actions.h"
 #include "db.h"
 #include "tournament.h"
+#include "application.h"
 
 void menu_callback(gchar *action);
-
-RinksTournament *current_tournament = NULL;
 
 void tournament_changed_cb(RinksTournament *tournament);
 
@@ -26,19 +25,23 @@ void init(void)
 
 void cleanup(void)
 {
-    if (current_tournament)
+    RinksTournament *current_tournament = application_get_current_tournament();
+    if (current_tournament) {
         tournament_close(current_tournament);
+        application_set_current_tournament(NULL);
+    }
 }
 
 void tournament_changed_cb(RinksTournament *tournament)
 {
     g_printf("Tournament changed\n");
+    RinksTournament *current_tournament = application_get_current_tournament();
     if (current_tournament != NULL)
         tournament_close(current_tournament);
 
-    current_tournament = tournament;
+    application_set_current_tournament(tournament);
 
-    ui_select_view(VIEW_SETTINGS, current_tournament);
+    ui_select_view(VIEW_SETTINGS, NULL);
 }
 
 void menu_callback(gchar *action)
