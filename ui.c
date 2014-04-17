@@ -4,19 +4,21 @@
 
 GtkWidget *main_window = NULL;
 GtkWidget *main_view = NULL;
+GtkWidget *main_view_notebook = NULL;
 
 void (*_menu_callback)(gchar *) = NULL;
 
 GtkWidget *ui_get_current_view(void)
 {
-    if (main_view == NULL)
+/*    if (main_view == NULL)
         return NULL;
 
     GtkWidget *viewport = gtk_bin_get_child(GTK_BIN(main_view));
     if (viewport == NULL)
         return NULL;
 
-    return gtk_bin_get_child(GTK_BIN(viewport));
+    return gtk_bin_get_child(GTK_BIN(viewport));*/
+    return NULL;
 }
 
 void ui_set_action_callback(void (*callback)(gchar *action))
@@ -39,10 +41,10 @@ static void ui_apply_button_clicked(GtkButton *button, gpointer userdata)
     if (current == NULL)
         return;
 
-    void (*apply_cb)(gpointer) = g_object_get_data(G_OBJECT(current), "apply-callback");
+    UiDialogCallbacks *cb = g_object_get_data(G_OBJECT(current), "dialog-callbacks");
 
-    if (apply_cb)
-        apply_cb(NULL);
+    if (cb && cb->apply_cb)
+        cb->apply_cb(NULL);
 }
 
 static void ui_activate_menu_item(GtkMenuItem *menu_item, gpointer userdata)
@@ -110,6 +112,13 @@ GtkWidget *ui_create_main_view(void)
             GTK_SHADOW_ETCHED_IN);
 
     gtk_widget_set_size_request(scroll, 150, 400);
+
+    main_view_notebook = gtk_notebook_new();
+    gtk_notebook_set_show_tabs(GTK_NOTEBOOK(main_view_notebook), FALSE);
+    gtk_notebook_set_show_border(GTK_NOTEBOOK(main_view_notebook), FALSE);
+    gtk_notebook_append_page(GTK_NOTEBOOK(main_view_notebook), ui_dialog_settings_open(NULL), NULL);
+
+    gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll), main_view_notebook);
 
     gtk_widget_show_all(scroll);
 
@@ -197,7 +206,7 @@ gchar *ui_get_filename(GtkFileChooserAction action)
 
 void ui_select_view(UiViewType type, gpointer data)
 {
-    GtkWidget *new_view = NULL;
+/*    GtkWidget *new_view = NULL;
     switch (type) {
         case VIEW_SETTINGS:
             new_view = ui_dialog_settings_open(data);
@@ -216,5 +225,39 @@ void ui_select_view(UiViewType type, gpointer data)
         }
         if (new_view != NULL)
             gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(main_view), new_view);
+    }*/
+}
+
+void ui_update_view(void)
+{
+    g_printf("update view\n");
+    gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(main_view_notebook));
+    GtkWidget *current = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), page);
+
+    g_printf("current page: %d (%p)\n", page, current);
+
+    if (current == NULL)
+        return;
+
+    UiDialogCallbacks *cb = g_object_get_data(G_OBJECT(current),
+            "dialog-callbacks");
+
+    if (cb && cb->update_cb)
+        cb->update_cb(NULL);
+}
+
+void ui_cleanup(void)
+{
+    gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(main_view_notebook));
+    gint i;
+    GtkWidget *page;
+    UiDialogCallbacks *cb = NULL;
+    for (i = 0; i < npages; ++i) {
+        page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), i);
+        if (page == NULL)
+            continue;
+        cb = g_object_get_data(G_OBJECT(page), "dialog-callbacks");
+        if (cb && cb->destroy_cb)
+            cb->destroy_cb(NULL);
     }
 }

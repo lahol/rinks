@@ -17,6 +17,23 @@ GtkWidget *ui_dialog_settings_init_entries(void);
 void ui_dialog_settings_write_data(void);
 void ui_dialog_settings_read_data(void);
 
+void ui_dialog_settings_free_settings_entry(struct UiDialogSettingsEntry *entry)
+{
+    if (entry == NULL)
+        return;
+
+    g_free(entry->key);
+    if (GTK_IS_WIDGET(entry->entry))
+        gtk_widget_destroy(entry->entry);
+
+    g_free(entry);
+}
+
+void ui_dialog_settings_free_entries(GList *entries)
+{
+    g_list_free_full(entries, (GDestroyNotify)ui_dialog_settings_free_settings_entry);
+}
+
 void ui_dialog_settings_apply_cb(gpointer data)
 {
     g_printf("ui-dialog-settings: apply\n");
@@ -25,14 +42,33 @@ void ui_dialog_settings_apply_cb(gpointer data)
     tournament_update_database(application_get_current_tournament());
 }
 
+void ui_dialog_settings_update_view_cb(gpointer data)
+{
+    g_printf("ui-dialog-settings: update view\n");
+
+    ui_dialog_settings_write_data();
+}
+
+void ui_dialog_settings_destroy_cb(gpointer data)
+{
+    g_printf("ui-dialog-settings: destroy\n");
+    ui_dialog_settings_free_entries(ui_dialog_settings_entries);
+    ui_dialog_settings_entries = NULL;
+}
+
 GtkWidget *ui_dialog_settings_open(gpointer data)
 {
+    static UiDialogCallbacks callbacks = {
+        .apply_cb = ui_dialog_settings_apply_cb,
+        .destroy_cb = ui_dialog_settings_destroy_cb,
+        .update_cb = ui_dialog_settings_update_view_cb
+    };
     if (!GTK_IS_WIDGET(ui_dialog_settings)) {
         ui_dialog_settings = gtk_vbox_new(FALSE, 0);
         g_object_ref(G_OBJECT(ui_dialog_settings));
 
         g_object_set_data(G_OBJECT(ui_dialog_settings),
-                "apply-callback", ui_dialog_settings_apply_cb);
+                "dialog-callbacks", &callbacks);
    /* 
                 "view-type", VIEW_SETTINGS,
                 NULL);*/
@@ -93,7 +129,10 @@ void ui_dialog_settings_write_data(void)
 
     for (tmp = ui_dialog_settings_entries; tmp != NULL; tmp = g_list_next(tmp)) {
         entry = (struct UiDialogSettingsEntry *)tmp->data;
-        value = tournament_get_property(tournament, entry->key);
+        if (tournament != NULL)
+            value = tournament_get_property(tournament, entry->key);
+        else
+            value = NULL;
         gtk_entry_set_text(GTK_ENTRY(entry->entry), value ? value : "");
         g_free(value);
     }

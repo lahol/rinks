@@ -30,6 +30,8 @@ void cleanup(void)
         tournament_close(current_tournament);
         application_set_current_tournament(NULL);
     }
+
+    ui_cleanup();
 }
 
 void tournament_changed_cb(RinksTournament *tournament)
@@ -41,7 +43,8 @@ void tournament_changed_cb(RinksTournament *tournament)
 
     application_set_current_tournament(tournament);
 
-    ui_select_view(VIEW_SETTINGS, NULL);
+    ui_update_view();
+/*    ui_select_view(VIEW_SETTINGS, NULL);*/
 }
 
 void menu_callback(gchar *action)

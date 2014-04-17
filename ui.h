@@ -13,4 +13,13 @@ typedef enum {
     VIEW_TEAMS
 } UiViewType;
 
+typedef struct {
+    void (*apply_cb)(gpointer);
+    void (*destroy_cb)(gpointer);
+    void (*update_cb)(gpointer);
+    void (*activate_cb)(gpointer);
+} UiDialogCallbacks;
+
 void ui_select_view(UiViewType type, gpointer data);
+void ui_update_view(void);
+void ui_cleanup(void);
