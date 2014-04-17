@@ -8,6 +8,7 @@ struct _RinksTournament {
     gchar *filename;
     gchar *description;
     gint rink_count;
+    gint group_count;
     GList *rounds; /* [element-type: RinksRound] */
     GList *teams;  /* [element-type: RinksTeam] */
 };
@@ -23,7 +24,13 @@ void tournament_read_data(RinksTournament *tournament)
     if (val != NULL && val[0] != '\0')
         tournament->rink_count = atoi(val);
     else
-        tournament->rink_count = 1;
+        tournament->rink_count = 0;
+
+    val = db_get_property(tournament->db_handle, "tournament.group-count");
+    if (val != NULL && val[0] != '\0')
+        tournament->group_count = atoi(val);
+    else
+        tournament->group_count = 0;
 }
 
 void tournament_update_database(RinksTournament *tournament)
@@ -94,6 +101,20 @@ gint tournament_get_rink_count(RinksTournament *tournament)
     return tournament->rink_count;
 }
 
+void tournament_set_group_count(RinksTournament *tournament, gint group_count)
+{
+    g_return_if_fail(tournament != NULL);
+
+    tournament->group_count = group_count;
+}
+
+gint tournament_get_group_count(RinksTournament *tournament)
+{
+    g_return_val_if_fail(tournament != NULL, 0);
+
+    return tournament->group_count;
+}
+
 void tournament_set_property(RinksTournament *tournament, const gchar *key, const gchar *value)
 {
     g_return_if_fail(tournament != NULL);
@@ -103,6 +124,9 @@ void tournament_set_property(RinksTournament *tournament, const gchar *key, cons
     }
     else if (g_strcmp0(key, "tournament.rink-count") == 0) {
         tournament_set_rink_count(tournament, value ? atoi(value) : 0);
+    }
+    else if (g_strcmp0(key, "tournament.group-count") == 0) {
+        tournament_set_group_count(tournament, value ? atoi(value) : 0);
     }
 }
 
@@ -115,6 +139,9 @@ gchar *tournament_get_property(RinksTournament *tournament, const gchar *key)
     }
     else if (g_strcmp0(key, "tournament.rink-count") == 0) {
         return g_strdup_printf("%d", tournament_get_rink_count(tournament));
+    }
+    else if (g_strcmp0(key, "tournament.group-count") == 0) {
+        return g_strdup_printf("%d", tournament_get_group_count(tournament));
     }
 
     return NULL;

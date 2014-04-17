@@ -97,9 +97,15 @@ GList *db_get_teams(gpointer db_handle)
 
 void db_set_property(gpointer db_handle, const gchar *key, const gchar *value)
 {
+    g_printf("db set property: %s (%s)\n", key, value);
+    /* parse key table.key -> does this even make sense? */
 }
 
 const gchar *db_get_property(gpointer db_handle, const gchar *key)
 {
+    g_printf("db get property: %s\n", key);
+/*    char *sql = sqlite*/
+    /* prepare statement, bind parameter (depending on key),
+     * step -> column, finalize*/
     return NULL;
 }

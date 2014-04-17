@@ -109,12 +109,14 @@ void ui_dialog_settings_add_settings_entry(const gchar *key, const gchar *label,
 
 GtkWidget *ui_dialog_settings_init_entries(void)
 {
-    GtkWidget *table = gtk_table_new(2, 2, FALSE); /* rows, cols, homogenous */
+    GtkWidget *table = gtk_table_new(3, 2, FALSE); /* rows, cols, homogenous */
 
     ui_dialog_settings_add_settings_entry("tournament.description", "Turniertitel:",
             table, 0);
     ui_dialog_settings_add_settings_entry("tournament.rink-count", "Anzahl Rinks:",
             table, 1);
+    ui_dialog_settings_add_settings_entry("tournament.group-count", "Anzahl Gruppen:",
+            table, 2);
 
     return table;
 }

@@ -10,7 +10,12 @@ void (*_menu_callback)(gchar *) = NULL;
 
 GtkWidget *ui_get_current_view(void)
 {
-/*    if (main_view == NULL)
+    gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(main_view_notebook));
+    GtkWidget *current = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), page);
+
+    return current;
+
+ /*    if (main_view == NULL)
         return NULL;
 
     GtkWidget *viewport = gtk_bin_get_child(GTK_BIN(main_view));
@@ -231,11 +236,7 @@ void ui_select_view(UiViewType type, gpointer data)
 void ui_update_view(void)
 {
     g_printf("update view\n");
-    gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(main_view_notebook));
-    GtkWidget *current = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), page);
-
-    g_printf("current page: %d (%p)\n", page, current);
-
+    GtkWidget *current = ui_get_current_view();
     if (current == NULL)
         return;
 
