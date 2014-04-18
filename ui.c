@@ -1,12 +1,32 @@
 #include <glib/gprintf.h>
 #include "ui.h"
 #include "ui-dialog-settings.h"
+#include "tournament.h"
 
 GtkWidget *main_window = NULL;
 GtkWidget *main_view = NULL;
 GtkWidget *main_view_notebook = NULL;
 
+GtkTreeStore *main_sidebar_tree = NULL;
+
 void (*_menu_callback)(gchar *) = NULL;
+
+enum {
+    SIDEBAR_TYPE_SETTINGS,
+    SIDEBAR_TYPE_TEAMS,
+    SIDEBAR_TYPE_ROUNDS,
+    SIDEBAR_TYPE_GAMES,
+    SIDEBAR_TYPE_ENCOUNTERS,
+    SIDEBAR_TYPE_RESULTS
+};
+
+enum {
+    SIDEBAR_COLUMN_LABEL,
+    SIDEBAR_COLUMN_PAGE,
+    SIDEBAR_COLUMN_DATA,
+    SIDEBAR_COLUMN_TYPE,
+    SIDEBAR_N_COLUMNS
+};
 
 GtkWidget *ui_get_current_view(void)
 {
@@ -36,6 +56,23 @@ static gboolean _delete_event(GtkWidget *widget, GdkEvent *event, gpointer data)
     gtk_main_quit();
 
     return FALSE;
+}
+
+static void ui_sidebar_selection_changed(GtkTreeSelection *selection, gpointer data)
+{
+    g_printf("selection changed\n");
+
+    GtkTreeIter iter;
+    GtkTreeModel *model;
+    gint pagenum;
+    gpointer pagedata;
+
+    if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+        gtk_tree_model_get(model, &iter, SIDEBAR_COLUMN_PAGE, &pagenum,
+                SIDEBAR_COLUMN_DATA, &pagedata, -1);
+        g_printf("selection: %d: %p\n", pagenum, pagedata);
+        gtk_notebook_set_current_page(GTK_NOTEBOOK(main_view_notebook), pagenum);
+    }
 }
 
 static void ui_apply_button_clicked(GtkButton *button, gpointer userdata)
@@ -91,9 +128,71 @@ GtkWidget *ui_create_main_menu(void)
     return menu;
 }
 
+GtkTreeStore *ui_create_sidebar_tree(void)
+{
+    main_sidebar_tree = gtk_tree_store_new(SIDEBAR_N_COLUMNS,
+            G_TYPE_STRING,
+            G_TYPE_INT,
+            G_TYPE_POINTER,
+            G_TYPE_INT);
+
+    return main_sidebar_tree;
+}
+
+void ui_update_sidebar_tree(RinksTournament *tournament)
+{
+}
+
+void ui_add_page(int type, const gchar *title, gpointer data)
+{
+    GtkWidget *page_widget = NULL;
+    gint pagenum = -1;
+    switch (type) {
+        case SIDEBAR_TYPE_SETTINGS:
+            page_widget = ui_dialog_settings_open(NULL);
+            break;
+        case SIDEBAR_TYPE_TEAMS:
+        case SIDEBAR_TYPE_ROUNDS:
+        case SIDEBAR_TYPE_GAMES:
+        case SIDEBAR_TYPE_ENCOUNTERS:
+        case SIDEBAR_TYPE_RESULTS:
+            break;
+    }
+
+    if (page_widget == NULL)
+        return;
+
+    pagenum = gtk_notebook_append_page(GTK_NOTEBOOK(main_view_notebook), page_widget, NULL);
+    if (pagenum == -1)
+        return;
+
+    GtkTreeIter iter;
+    gtk_tree_store_append(main_sidebar_tree, &iter, NULL);
+
+    gtk_tree_store_set(main_sidebar_tree, &iter,
+            SIDEBAR_COLUMN_LABEL, title,
+            SIDEBAR_COLUMN_PAGE, pagenum,
+            SIDEBAR_COLUMN_DATA, data,
+            SIDEBAR_COLUMN_TYPE, type,
+            -1);
+}
+
 GtkWidget *ui_create_sidebar(void)
 {
-    GtkWidget *list = gtk_tree_view_new();
+    GtkWidget *list = gtk_tree_view_new_with_model(GTK_TREE_MODEL(ui_create_sidebar_tree()));
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(list), FALSE);
+
+    GtkCellRenderer *renderer = gtk_cell_renderer_text_new();
+    GtkTreeViewColumn *column = gtk_tree_view_column_new_with_attributes("Seite",
+            renderer, "text", SIDEBAR_COLUMN_LABEL, NULL);
+
+    gtk_tree_view_append_column(GTK_TREE_VIEW(list), column);
+
+    GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(list));
+    gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
+    g_signal_connect(G_OBJECT(selection), "changed",
+            G_CALLBACK(ui_sidebar_selection_changed), NULL);
+
     GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
             GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
@@ -121,11 +220,12 @@ GtkWidget *ui_create_main_view(void)
     main_view_notebook = gtk_notebook_new();
     gtk_notebook_set_show_tabs(GTK_NOTEBOOK(main_view_notebook), FALSE);
     gtk_notebook_set_show_border(GTK_NOTEBOOK(main_view_notebook), FALSE);
-    gtk_notebook_append_page(GTK_NOTEBOOK(main_view_notebook), ui_dialog_settings_open(NULL), NULL);
 
     gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll), main_view_notebook);
 
     gtk_widget_show_all(scroll);
+
+    ui_add_page(SIDEBAR_TYPE_SETTINGS, "Einstellungen", NULL);
 
     return scroll;
 }
