@@ -17,25 +17,42 @@ void tournament_read_data(RinksTournament *tournament)
 {
     g_return_if_fail(tournament != NULL);
     
-    tournament_set_description(tournament, db_get_property(tournament->db_handle, "tournament.description"));
+    gchar *val;
+    val = db_get_property(tournament->db_handle, "tournament.description"); 
+    tournament_set_description(tournament, val);
+    g_free(val);
 
-    const gchar *val;
     val = db_get_property(tournament->db_handle, "tournament.rink-count");
     if (val != NULL && val[0] != '\0')
         tournament->rink_count = atoi(val);
     else
         tournament->rink_count = 0;
+    g_free(val);
 
     val = db_get_property(tournament->db_handle, "tournament.group-count");
     if (val != NULL && val[0] != '\0')
         tournament->group_count = atoi(val);
     else
         tournament->group_count = 0;
+    g_free(val);
 }
 
-void tournament_update_database(RinksTournament *tournament)
+void tournament_write_data(RinksTournament *tournament)
 {
     g_return_if_fail(tournament != NULL);
+
+    gchar *val = NULL;
+
+    db_set_property(tournament->db_handle, "tournament.description",
+            tournament->description);
+
+    val = g_strdup_printf("%d", tournament->rink_count);
+    db_set_property(tournament->db_handle, "tournament.rink-count", val);
+    g_free(val);
+
+    val = g_strdup_printf("%d", tournament->group_count);
+    db_set_property(tournament->db_handle, "tournament.group-count", val);
+    g_free(val);
 }
 
 RinksTournament *tournament_open(gchar *filename, gboolean clear)

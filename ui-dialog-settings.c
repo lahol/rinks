@@ -39,7 +39,7 @@ void ui_dialog_settings_apply_cb(gpointer data)
     g_printf("ui-dialog-settings: apply\n");
     ui_dialog_settings_read_data();
 
-    tournament_update_database(application_get_current_tournament());
+    tournament_write_data(application_get_current_tournament());
 }
 
 void ui_dialog_settings_update_view_cb(gpointer data)
@@ -76,7 +76,7 @@ GtkWidget *ui_dialog_settings_open(gpointer data)
         GtkWidget *label = gtk_label_new(NULL);
         gtk_label_set_markup(GTK_LABEL(label), "<span size=\"xx-large\" weight=\"ultrabold\">Einstellungen</span>");
 
-        gtk_box_pack_start(GTK_BOX(ui_dialog_settings), label, FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(ui_dialog_settings), label, FALSE, FALSE, 3);
 
         GtkWidget *entries = ui_dialog_settings_init_entries();
         gtk_box_pack_start(GTK_BOX(ui_dialog_settings), entries, FALSE, FALSE, 0);

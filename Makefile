@@ -1,4 +1,4 @@
-CC := gcc
+CC := clang
 PKG_CONFIG := pkg-config
 
 CFLAGS = -Wall -g `$(PKG_CONFIG) --cflags glib-2.0 gtk+-2.0`

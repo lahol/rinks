@@ -97,15 +97,51 @@ GList *db_get_teams(gpointer db_handle)
 
 void db_set_property(gpointer db_handle, const gchar *key, const gchar *value)
 {
-    g_printf("db set property: %s (%s)\n", key, value);
-    /* parse key table.key -> does this even make sense? */
+    g_return_if_fail(db_handle != NULL);
+    g_return_if_fail(key != NULL && key[0] != '\0');
+
+    int rc;
+
+    char *sql = sqlite3_mprintf("update settings set value=%Q where key=%Q",
+            value, key);
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        return;
+
+    if (sqlite3_changes(db_handle) == 0) {
+        sql = sqlite3_mprintf("insert into settings (key,value) values (%Q,%Q)", key, value);
+        /*rc =*/ sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+        sqlite3_free(sql);
+    }
 }
 
-const gchar *db_get_property(gpointer db_handle, const gchar *key)
+gchar *db_get_property(gpointer db_handle, const gchar *key)
 {
-    g_printf("db get property: %s\n", key);
-/*    char *sql = sqlite*/
-    /* prepare statement, bind parameter (depending on key),
-     * step -> column, finalize*/
-    return NULL;
+    g_return_val_if_fail(db_handle != NULL, NULL);
+    g_return_val_if_fail(key != NULL && key[0] != '\0', NULL);
+
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    gchar *result = NULL;
+
+    char *sql = sqlite3_mprintf("select value from settings where key = %Q", key);
+
+    rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+        goto out;
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_ROW)
+        goto out;
+
+    result = g_strdup((gchar *)sqlite3_column_text(stmt, 0));
+
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    if (sql != NULL)
+        sqlite3_free(sql);
+    return result;
 }
