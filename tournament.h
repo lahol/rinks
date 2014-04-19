@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glib.h>
+#include "data.h"
 
 typedef struct _RinksTournament RinksTournament;
 
@@ -20,3 +21,6 @@ void tournament_set_property(RinksTournament *tournament, const gchar *key, cons
 gchar *tournament_get_property(RinksTournament *tournament, const gchar *key);
 
 void tournament_write_data(RinksTournament *tournament);
+
+GList *tournament_get_teams(RinksTournament *tournament);
+void tournament_add_team(RinksTournament *tournament, RinksTeam *team);

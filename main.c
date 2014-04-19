@@ -43,6 +43,7 @@ void tournament_changed_cb(RinksTournament *tournament)
 
     application_set_current_tournament(tournament);
 
+    ui_data_changed();
     ui_update_view();
 /*    ui_select_view(VIEW_SETTINGS, NULL);*/
 }

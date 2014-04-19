@@ -1,6 +1,7 @@
 #include <glib/gprintf.h>
 #include "ui.h"
 #include "ui-dialog-settings.h"
+#include "ui-dialog-teams.h"
 #include "tournament.h"
 
 GtkWidget *main_window = NULL;
@@ -34,16 +35,43 @@ GtkWidget *ui_get_current_view(void)
     GtkWidget *current = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), page);
 
     return current;
+}
 
- /*    if (main_view == NULL)
-        return NULL;
+void ui_dialog_run_callback(GtkWidget *page, UiDialogCallbackType type, gpointer data)
+{
+    g_return_if_fail(page != NULL);
+    UiDialogCallbacks *cb = g_object_get_data(G_OBJECT(page), "dialog-callbacks");
+    if (cb == NULL)
+        return;
 
-    GtkWidget *viewport = gtk_bin_get_child(GTK_BIN(main_view));
-    if (viewport == NULL)
-        return NULL;
+#define CB_CALL(cbname) case CB_ ## cbname: if (cb->cbname ## _cb) cb->cbname ## _cb(data); break
+    switch (type) {
+        CB_CALL(apply);
+        CB_CALL(destroy);
+        CB_CALL(update);
+        CB_CALL(activated);
+        CB_CALL(deactivated);
+        CB_CALL(data_changed);
+    }
+#undef CB_CALL
 
-    return gtk_bin_get_child(GTK_BIN(viewport));*/
-    return NULL;
+}
+
+void ui_change_view(GtkWidget *new_page)
+{
+    gint last = gtk_notebook_get_current_page(GTK_NOTEBOOK(main_view_notebook));
+    gint pagenum = gtk_notebook_page_num(GTK_NOTEBOOK(main_view_notebook), new_page);
+
+    if (last == pagenum || pagenum == -1)
+        return;
+
+    GtkWidget *widget = NULL;
+
+    widget = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), last);
+    ui_dialog_run_callback(widget, CB_deactivated, NULL);
+
+    gtk_notebook_set_current_page(GTK_NOTEBOOK(main_view_notebook), pagenum);
+    ui_dialog_run_callback(new_page, CB_activated, NULL);
 }
 
 void ui_set_action_callback(void (*callback)(gchar *action))
@@ -64,14 +92,14 @@ static void ui_sidebar_selection_changed(GtkTreeSelection *selection, gpointer d
 
     GtkTreeIter iter;
     GtkTreeModel *model;
-    gint pagenum;
+    GtkWidget *page_widget = NULL;
     gpointer pagedata;
 
     if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
-        gtk_tree_model_get(model, &iter, SIDEBAR_COLUMN_PAGE, &pagenum,
+        gtk_tree_model_get(model, &iter, SIDEBAR_COLUMN_PAGE, &page_widget,
                 SIDEBAR_COLUMN_DATA, &pagedata, -1);
-        g_printf("selection: %d: %p\n", pagenum, pagedata);
-        gtk_notebook_set_current_page(GTK_NOTEBOOK(main_view_notebook), pagenum);
+        g_printf("selection: %p: %p\n", page_widget, pagedata);
+        ui_change_view(page_widget);
     }
 }
 
@@ -83,10 +111,7 @@ static void ui_apply_button_clicked(GtkButton *button, gpointer userdata)
     if (current == NULL)
         return;
 
-    UiDialogCallbacks *cb = g_object_get_data(G_OBJECT(current), "dialog-callbacks");
-
-    if (cb && cb->apply_cb)
-        cb->apply_cb(NULL);
+    ui_dialog_run_callback(current, CB_apply, NULL);
 }
 
 static void ui_activate_menu_item(GtkMenuItem *menu_item, gpointer userdata)
@@ -132,7 +157,7 @@ GtkTreeStore *ui_create_sidebar_tree(void)
 {
     main_sidebar_tree = gtk_tree_store_new(SIDEBAR_N_COLUMNS,
             G_TYPE_STRING,
-            G_TYPE_INT,
+            G_TYPE_POINTER,
             G_TYPE_POINTER,
             G_TYPE_INT);
 
@@ -152,6 +177,8 @@ void ui_add_page(int type, const gchar *title, gpointer data)
             page_widget = ui_dialog_settings_open(NULL);
             break;
         case SIDEBAR_TYPE_TEAMS:
+            page_widget = ui_dialog_teams_open(NULL);
+            break;
         case SIDEBAR_TYPE_ROUNDS:
         case SIDEBAR_TYPE_GAMES:
         case SIDEBAR_TYPE_ENCOUNTERS:
@@ -171,7 +198,7 @@ void ui_add_page(int type, const gchar *title, gpointer data)
 
     gtk_tree_store_set(main_sidebar_tree, &iter,
             SIDEBAR_COLUMN_LABEL, title,
-            SIDEBAR_COLUMN_PAGE, pagenum,
+            SIDEBAR_COLUMN_PAGE, page_widget,
             SIDEBAR_COLUMN_DATA, data,
             SIDEBAR_COLUMN_TYPE, type,
             -1);
@@ -226,6 +253,7 @@ GtkWidget *ui_create_main_view(void)
     gtk_widget_show_all(scroll);
 
     ui_add_page(SIDEBAR_TYPE_SETTINGS, "Einstellungen", NULL);
+    ui_add_page(SIDEBAR_TYPE_TEAMS, "Teams", NULL);
 
     return scroll;
 }
@@ -340,11 +368,21 @@ void ui_update_view(void)
     if (current == NULL)
         return;
 
-    UiDialogCallbacks *cb = g_object_get_data(G_OBJECT(current),
-            "dialog-callbacks");
+    ui_dialog_run_callback(current, CB_update, NULL);
+}
 
-    if (cb && cb->update_cb)
-        cb->update_cb(NULL);
+void ui_data_changed(void)
+{
+    gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(main_view_notebook));
+    gint i;
+    GtkWidget *page;
+
+    for (i = 0; i < npages; ++i) {
+        page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), i);
+        if (page == NULL)
+            continue;
+        ui_dialog_run_callback(page, CB_data_changed, NULL);
+    }
 }
 
 void ui_cleanup(void)
@@ -352,13 +390,30 @@ void ui_cleanup(void)
     gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(main_view_notebook));
     gint i;
     GtkWidget *page;
-    UiDialogCallbacks *cb = NULL;
+
     for (i = 0; i < npages; ++i) {
         page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), i);
         if (page == NULL)
             continue;
-        cb = g_object_get_data(G_OBJECT(page), "dialog-callbacks");
-        if (cb && cb->destroy_cb)
-            cb->destroy_cb(NULL);
+        ui_dialog_run_callback(page, CB_destroy, NULL);
     }
 }
+
+GtkWidget *ui_dialog_page_new(gchar *title, UiDialogCallbacks *callbacks)
+{
+    GtkWidget *page = gtk_vbox_new(FALSE, 0);
+    g_object_ref(G_OBJECT(page));
+
+    g_object_set_data(G_OBJECT(page), "dialog-callbacks", callbacks);
+
+    GtkWidget *label = gtk_label_new(NULL);
+    const gchar *format = "<span size=\"xx-large\" weight=\"ultrabold\">%s</span>";
+    gchar *markup = g_markup_printf_escaped(format, title);
+    gtk_label_set_markup(GTK_LABEL(label), markup);
+    g_free(markup);
+
+    gtk_box_pack_start(GTK_BOX(page), label, FALSE, FALSE, 3);
+
+    return page;
+}
+

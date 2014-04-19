@@ -163,3 +163,17 @@ gchar *tournament_get_property(RinksTournament *tournament, const gchar *key)
 
     return NULL;
 }
+
+GList *tournament_get_teams(RinksTournament *tournament)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_teams(tournament->db_handle);
+}
+
+void tournament_add_team(RinksTournament *tournament, RinksTeam *team)
+{
+    g_return_if_fail(tournament != NULL);
+
+    db_add_team(tournament->db_handle, team);
+}
