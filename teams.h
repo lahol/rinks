@@ -2,4 +2,4 @@
 
 #include "data.h"
 
-void teams_free(RinksTeam *team);
+void team_free(RinksTeam *team);

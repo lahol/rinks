@@ -171,9 +171,17 @@ GList *tournament_get_teams(RinksTournament *tournament)
     return db_get_teams(tournament->db_handle);
 }
 
-void tournament_add_team(RinksTournament *tournament, RinksTeam *team)
+gint64 tournament_add_team(RinksTournament *tournament, RinksTeam *team)
+{
+    g_return_val_if_fail(tournament != NULL, -1);
+
+    return db_add_team(tournament->db_handle, team);
+}
+
+void tournament_update_team(RinksTournament *tournament, RinksTeam *team)
 {
     g_return_if_fail(tournament != NULL);
 
-    db_add_team(tournament->db_handle, team);
+    db_update_team(tournament->db_handle, team);
 }
+

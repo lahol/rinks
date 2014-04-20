@@ -3,13 +3,13 @@
 #include <glib.h>
 
 typedef struct {
-    guint32 id;
-    guint32 group_id;
+    gint64 id;
+    gint32 group_id;
     gchar *name;
     gchar *skip;
-    guint32 points;
-    guint32 ends;
-    guint32 stones;
+    gint32 points;
+    gint32 ends;
+    gint32 stones;
 } RinksTeam;
 
 typedef enum {

@@ -1,6 +1,6 @@
 #include "teams.h"
 
-void teams_free(RinksTeam *team)
+void team_free(RinksTeam *team)
 {
     if (team == NULL)
         return;

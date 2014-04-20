@@ -86,13 +86,96 @@ void db_close_database(gpointer db_handle)
     }
 }
 
-void db_add_team(gpointer db_handle, RinksTeam *team)
+gint64 db_add_team(gpointer db_handle, RinksTeam *team)
 {
+    g_return_val_if_fail(db_handle != NULL, -1);
+    g_return_val_if_fail(team != NULL, -1);
+
+    int rc;
+
+    char *sql = sqlite3_mprintf("insert into teams (name,skip,group_id,points,ends,stones) values (%Q,%Q,%d,%d,%d,%d)",
+            team->name, team->skip, team->group_id,
+            team->points, team->ends, team->stones);
+
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        return -1;
+
+    return sqlite3_last_insert_rowid(db_handle);
+}
+
+void db_update_team(gpointer db_handle, RinksTeam *team)
+{
+    g_return_if_fail(db_handle != NULL);
+    g_return_if_fail(team != NULL);
+
+    int rc;
+
+    char *sql = sqlite3_mprintf("update teams set name=%Q, skip=%Q, group_id=%d, points=%d, ends=%d, stones=%d where id=%d",
+            team->name, team->skip, team->group_id,
+            team->points, team->ends, team->stones, team->id);
+
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        return;
 }
 
 GList *db_get_teams(gpointer db_handle)
 {
-    return NULL;
+    g_return_val_if_fail(db_handle != NULL, NULL);
+
+    GList *result = NULL;
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    RinksTeam *team;
+
+    int col_count, col;
+    const char *col_name;
+    
+    rc = sqlite3_prepare_v2(db_handle, "select * from teams order by id asc", -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+        goto out;
+
+    col_count = sqlite3_column_count(stmt);
+
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        team = g_malloc0(sizeof(RinksTeam));
+        for (col = 0; col < col_count; ++col) {
+            col_name = sqlite3_column_origin_name(stmt, col);
+            if (g_strcmp0(col_name, "id") == 0) {
+                team->id = sqlite3_column_int(stmt, col);
+            }
+            else if (g_strcmp0(col_name, "name") == 0) {
+                team->name = g_strdup((gchar *)sqlite3_column_text(stmt, col));
+            }
+            else if (g_strcmp0(col_name, "skip") == 0) {
+                team->skip = g_strdup((gchar *)sqlite3_column_text(stmt, col));
+            }
+            else if (g_strcmp0(col_name, "group_id") == 0) {
+                team->group_id = sqlite3_column_int(stmt, col);
+            }
+            else if (g_strcmp0(col_name, "points") == 0) {
+                team->points = sqlite3_column_int(stmt, col);
+            }
+            else if (g_strcmp0(col_name, "ends") == 0) {
+                team->ends = sqlite3_column_int(stmt, col);
+            }
+            else if (g_strcmp0(col_name, "stones") == 0) {
+                team->stones = sqlite3_column_int(stmt, col);
+            }
+        }
+
+        result = g_list_append(result, team);
+    }
+
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    return result;
 }
 
 void db_set_property(gpointer db_handle, const gchar *key, const gchar *value)

@@ -23,4 +23,5 @@ gchar *tournament_get_property(RinksTournament *tournament, const gchar *key);
 void tournament_write_data(RinksTournament *tournament);
 
 GList *tournament_get_teams(RinksTournament *tournament);
-void tournament_add_team(RinksTournament *tournament, RinksTeam *team);
+gint64 tournament_add_team(RinksTournament *tournament, RinksTeam *team);
+void tournament_update_team(RinksTournament *tournament, RinksTeam *team);

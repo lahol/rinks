@@ -9,6 +9,7 @@ void db_close_database(gpointer db_handle);
 void db_set_property(gpointer db_handle, const gchar *key, const gchar *value);
 gchar *db_get_property(gpointer db_handle, const gchar *key);
 
-void db_add_team(gpointer db_handle, RinksTeam *team);
+gint64 db_add_team(gpointer db_handle, RinksTeam *team);
+void db_update_team(gpointer db_handle, RinksTeam *team);
 
 GList *db_get_teams(gpointer db_handle);
