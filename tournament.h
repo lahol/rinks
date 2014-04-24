@@ -2,6 +2,7 @@
 
 #include <glib.h>
 #include "data.h"
+#include "teams.h"
 
 typedef struct _RinksTournament RinksTournament;
 

@@ -2,6 +2,7 @@
 
 #include <glib.h>
 #include "data.h"
+#include "teams.h"
 
 gpointer db_open_database(gchar *path, gboolean clear);
 void db_close_database(gpointer db_handle);

@@ -106,6 +106,18 @@ gint64 db_add_team(gpointer db_handle, RinksTeam *team)
     return sqlite3_last_insert_rowid(db_handle);
 }
 
+/*gpointer *util_glist_to_array(GList *list)
+{
+    guint len = g_list_length(list);
+    guint i;
+
+    gpointer *array = g_malloc0(sizeof(gpointer) * (len + 1));
+    for (i = 0; i < len; ++i, list = g_list_next(list))
+        array[i] = list->data;
+
+    return array;
+}
+*/
 void db_update_team(gpointer db_handle, RinksTeam *team)
 {
     g_return_if_fail(db_handle != NULL);
@@ -113,9 +125,36 @@ void db_update_team(gpointer db_handle, RinksTeam *team)
 
     int rc;
 
-    char *sql = sqlite3_mprintf("update teams set name=%Q, skip=%Q, group_id=%d, points=%d, ends=%d, stones=%d where id=%d",
+    /*char *sql = sqlite3_mprintf("update teams set name=%Q, skip=%Q, group_id=%d, points=%d, ends=%d, stones=%d where id=%d",
             team->name, team->skip, team->group_id,
-            team->points, team->ends, team->stones, team->id);
+            team->points, team->ends, team->stones, team->id);*/
+
+    char **keys = g_malloc0(sizeof(char *) * 7);
+    int key_pos = 0;
+    if (team->valid_keys & RinksTeamKeyName)
+        keys[key_pos++] = sqlite3_mprintf("name=%Q", team->name);
+    if (team->valid_keys & RinksTeamKeySkip)
+        keys[key_pos++] = sqlite3_mprintf("skip=%Q", team->skip);
+    if (team->valid_keys & RinksTeamKeyGroupId)
+        keys[key_pos++] = sqlite3_mprintf("group_id=%d", team->group_id);
+    if (team->valid_keys & RinksTeamKeyPoints)
+        keys[key_pos++] = sqlite3_mprintf("points=%d", team->points);
+    if (team->valid_keys & RinksTeamKeyEnds)
+        keys[key_pos++] = sqlite3_mprintf("ends=%d", team->ends);
+    if (team->valid_keys & RinksTeamKeyStones)
+        keys[key_pos++] = sqlite3_mprintf("stones=%d", team->stones);
+
+    if (key_pos == 0)
+        return;
+
+    char *set_entries = g_strjoinv(",", keys);
+
+    char *sql = sqlite3_mprintf("update teams set %s where id=%d", set_entries, team->id);
+    do {
+        sqlite3_free(keys[--key_pos]);
+    } while (key_pos);
+    g_free(keys);
+    g_free(set_entries);
 
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
     sqlite3_free(sql);

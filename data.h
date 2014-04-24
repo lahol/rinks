@@ -2,16 +2,6 @@
 
 #include <glib.h>
 
-typedef struct {
-    gint64 id;
-    gint32 group_id;
-    gchar *name;
-    gchar *skip;
-    gint32 points;
-    gint32 ends;
-    gint32 stones;
-} RinksTeam;
-
 typedef enum {
     ROUND_TYPE_NEXT_TO_GROUP,
     ROUND_TYPE_NEXT_TO_ALL,

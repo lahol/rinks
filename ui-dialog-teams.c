@@ -46,7 +46,8 @@ void ui_dialog_teams_apply_cb(gpointer data)
         if (team.group_id == 0)
             team.group_id = 1;
 
-        /* TODO: only update settings not pts/ends/stones */
+        team.valid_keys = RinksTeamKeyName | RinksTeamKeySkip | RinksTeamKeyGroupId;
+
         tournament_update_team(tournament, &team);
         g_free(team.name);
         g_free(team.skip);
