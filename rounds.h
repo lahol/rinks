@@ -8,6 +8,11 @@ typedef enum {
     ROUND_TYPE_ROUND_ROBIN
 } RinksRoundType;
 
+typedef enum {
+    RinksRoundFlagEncountersCreated = 1 << 0,
+    RinksRoundFlagDone = 1 << 1
+} RinksRoundFlag;
+
 typedef struct {
     gint64 id;
     RinksRoundType type;
@@ -19,3 +24,5 @@ typedef struct {
 } RinksRound;
 
 void round_free(RinksRound *round);
+
+void rounds_create_encounters(gint64 round_id);

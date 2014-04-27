@@ -21,6 +21,8 @@ struct UiDialogRoundsEntry {
     GtkWidget *round_end;
 };
 
+#define ROUNDS_ENTRY_LENGTH     6
+
 GList *ui_dialog_rounds_entries = NULL; /* [element-type: struct UiDialogRoundsEntry] */
 
 void ui_dialog_rounds_create_entries(void);
@@ -96,18 +98,29 @@ void ui_dialog_rounds_button_add_round_clicked(GtkButton *button, gpointer data)
     guint rows = 0;
 
     if (ui_dialog_rounds_table == NULL) {
-        ui_dialog_rounds_table = gtk_table_new(1, 5, FALSE);
+        ui_dialog_rounds_table = gtk_table_new(1, ROUNDS_ENTRY_LENGTH, FALSE);
 
         gtk_box_pack_start(GTK_BOX(ui_dialog_rounds), ui_dialog_rounds_table, FALSE, FALSE, 0);
     }
     else {
         gtk_table_get_size(GTK_TABLE(ui_dialog_rounds_table), &rows, NULL);
-        gtk_table_resize(GTK_TABLE(ui_dialog_rounds_table), rows + 1, 5);
+        gtk_table_resize(GTK_TABLE(ui_dialog_rounds_table), rows + 1, ROUNDS_ENTRY_LENGTH);
     }
 
     ui_dialog_rounds_add_entry(ui_dialog_rounds_table, rows, round, nteams);
 
     gtk_widget_show_all(ui_dialog_rounds_table);
+}
+
+void ui_dialog_rounds_button_create_encounters_clicked(GtkButton *button, struct UiDialogRoundsEntry *entry)
+{
+    g_return_if_fail(entry != NULL);
+
+    g_printf("create games for round %" G_GINT64_FORMAT "\n", entry->round_id);
+
+    /* create encounters; set round flag, disable button */
+    rounds_create_encounters(entry->round_id);
+    gtk_widget_set_sensitive(GTK_WIDGET(button), FALSE);
 }
 
 void ui_dialog_rounds_create_entries(void)
@@ -124,7 +137,7 @@ void ui_dialog_rounds_create_entries(void)
     gint offset;
 
     if (nrounds > 0) {
-        ui_dialog_rounds_table = gtk_table_new(nrounds, 5, FALSE);
+        ui_dialog_rounds_table = gtk_table_new(nrounds, ROUNDS_ENTRY_LENGTH, FALSE);
 
         for (tmp = rounds, offset = 0; tmp != NULL; tmp = g_list_next(tmp), ++offset) {
             ui_dialog_rounds_add_entry(ui_dialog_rounds_table, offset, (RinksRound *)tmp->data, nteams);
@@ -204,6 +217,12 @@ void ui_dialog_rounds_add_entry(GtkWidget *table, gint offset, RinksRound *round
     entry->round_end = gtk_combo_box_text_new();
     ui_dialog_rounds_init_range_widget(entry->round_end, nteams, round->range_end);
     gtk_table_attach(GTK_TABLE(table), entry->round_end, 4, 5, offset, offset + 1, 0, 0, 2, 2);
+
+    GtkWidget *button = gtk_button_new_with_label("Begegnungen erzeugen");
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(ui_dialog_rounds_button_create_encounters_clicked), (gpointer)entry);
+    gtk_table_attach(GTK_TABLE(table), button, 5, 6, offset, offset + 1, 0, 0, 2, 2);
+    if (round->flags & RinksRoundFlagEncountersCreated)
+        gtk_widget_set_sensitive(button, FALSE);
 
     ui_dialog_rounds_entries = g_list_append(ui_dialog_rounds_entries, entry);
 }

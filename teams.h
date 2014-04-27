@@ -23,3 +23,10 @@ enum {
 };
 
 void team_free(RinksTeam *team);
+
+typedef enum {
+    RinksTeamSortGroup,
+    RinksTeamSortAll
+} RinksTeamSortMode;
+
+GList *teams_sort(GList *list, RinksTeamSortMode mode);

@@ -333,6 +333,7 @@ GList *db_get_rounds(gpointer db_handle)
 #undef DBGETVAL
         }
 
+        g_printf("get rounds: %" G_GINT64_FORMAT " flags: 0x%x\n", round->id, round->flags);
         result = g_list_append(result, round);
     }
 out:
@@ -387,6 +388,8 @@ gint64 db_add_round(gpointer db_handle, RinksRound *round)
 
     int rc;
 
+    g_printf("add round flags: 0x%x\n", round->flags);
+
     gchar *sql = sqlite3_mprintf("insert into rounds (type,description,range_start,range_end,flags) values (%d,%Q,%d,%d,%u)",
             round->type, round->description,
             round->range_start, round->range_end,
@@ -409,15 +412,54 @@ void db_update_round(gpointer db_handle, RinksRound *round)
     int rc;
 
     gchar *sql = sqlite3_mprintf("update rounds set type=%d, description=%Q, range_start=%d,\
-range_end=%d, flags=%u where id=%" G_GINT64_FORMAT,
+range_end=%d where id=%" G_GINT64_FORMAT,
             round->type, round->description, round->range_start,
-            round->range_end, round->flags, round->id);
+            round->range_end, round->id);
 
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
     sqlite3_free(sql);
 
     if (rc != SQLITE_OK)
         return;
+}
+
+void db_round_update_flag(gpointer db_handle, gint64 round_id, guint flag, gboolean set)
+{
+    RinksRound *round = db_get_round(db_handle, round_id);
+
+    if (round == NULL)
+        return;
+    
+    if (set)
+        round->flags |= flag;
+    else
+        round->flags &= ~flag;
+
+    g_printf("db update flags: 0x%x\n", round->flags);
+
+    gchar *sql = sqlite3_mprintf("update rounds set flags=%u where id=%" G_GINT64_FORMAT,
+            round->flags, round_id);
+    gchar *err = NULL;
+    int rc;
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, &err);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK) {
+        g_printf("db error: %s\n", err);
+        sqlite3_free(err);
+    }
+
+    round_free(round);
+}
+
+void db_round_set_flag(gpointer db_handle, gint64 round_id, guint flag)
+{
+    db_round_update_flag(db_handle, round_id, flag, TRUE);
+}
+
+void db_round_unset_flag(gpointer db_handle, gint64 round_id, guint flag)
+{
+    db_round_update_flag(db_handle, round_id, flag, FALSE);
 }
 
 void db_set_property(gpointer db_handle, const gchar *key, const gchar *value)
@@ -469,4 +511,28 @@ out:
     if (sql != NULL)
         sqlite3_free(sql);
     return result;
+}
+
+gint64 db_add_encounter(gpointer db_handle, gint64 round_id,
+                        const gchar *abstr_team1, const gchar *abstr_team2)
+{
+    g_return_val_if_fail(db_handle != NULL, -1);
+
+    int rc;
+
+    char *sql = sqlite3_mprintf("insert into encounters (round,abstract_team1,abstract_team2,game,rink) values (%"\
+G_GINT64_FORMAT ",%Q,%Q,-1,-1)",
+            round_id, abstr_team1, abstr_team2);
+
+    gchar *err = NULL;
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, &err);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK) {
+        g_printf("db error: %s\n", err);
+        sqlite3_free(err);
+        return -1;
+    }
+
+    return sqlite3_last_insert_rowid(db_handle);
 }

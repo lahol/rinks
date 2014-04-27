@@ -21,3 +21,8 @@ GList *db_get_rounds(gpointer db_handle);
 RinksRound *db_get_round(gpointer db_handle, gint64 round_id);
 gint64 db_add_round(gpointer db_handle, RinksRound *round);
 void db_update_round(gpointer db_handle, RinksRound *round);
+void db_round_set_flag(gpointer db_handle, gint64 round_id, guint flag);
+void db_round_unset_flag(gpointer db_handle, gint64 round_id, guint flag);
+
+gint64 db_add_encounter(gpointer db_handle, gint64 round_id,
+                        const gchar *abstr_team1, const gchar *abstr_team2);

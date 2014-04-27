@@ -34,3 +34,8 @@ GList *tournament_get_rounds(RinksTournament *tournament);
 RinksRound *tournament_get_round(RinksTournament *tournament, gint64 round_id);
 gint64 tournament_add_round(RinksTournament *tournament, RinksRound *round);
 void tournament_update_round(RinksTournament *tournament, RinksRound *round);
+void tournament_round_set_flag(RinksTournament *tournament, gint64 round_id, guint flag);
+void tournament_round_unset_flag(RinksTournament *tournament, gint64 round_id, guint flag);
+
+gint64 tournament_add_encounter(RinksTournament *tournament, gint64 round_id,
+                                const gchar *abstr_team1, const gchar *abstr_team2);

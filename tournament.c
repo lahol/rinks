@@ -226,3 +226,25 @@ void tournament_update_round(RinksTournament *tournament, RinksRound *round)
 
     db_update_round(tournament->db_handle, round);
 }
+
+void tournament_round_set_flag(RinksTournament *tournament, gint64 round_id, guint flag)
+{
+    g_return_if_fail(tournament != NULL);
+
+    db_round_set_flag(tournament->db_handle, round_id, flag);
+}
+
+void tournament_round_unset_flag(RinksTournament *tournament, gint64 round_id, guint flag)
+{
+    g_return_if_fail(tournament != NULL);
+
+    db_round_unset_flag(tournament->db_handle, round_id, flag);
+}
+
+gint64 tournament_add_encounter(RinksTournament *tournament, gint64 round_id,
+                                const gchar *abstr_team1, const gchar *abstr_team2)
+{
+    g_return_val_if_fail(tournament != NULL, -1);
+
+    return db_add_encounter(tournament->db_handle, round_id, abstr_team1, abstr_team2);
+}
