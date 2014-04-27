@@ -28,7 +28,7 @@ RinksTournament *action_open_tournament(void)
     if (filename == NULL)
         return NULL;
 
-    RinksTournament *tournament = tournament_open("test.rinks", FALSE);
+    RinksTournament *tournament = tournament_open(filename, FALSE);
     g_free(filename);
 
     if (action_callbacks.handle_tournament_changed)

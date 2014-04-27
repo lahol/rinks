@@ -171,6 +171,13 @@ GList *tournament_get_teams(RinksTournament *tournament)
     return db_get_teams(tournament->db_handle);
 }
 
+RinksTeam *tournament_get_team(RinksTournament *tournament, gint64 team_id)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_team(tournament->db_handle, team_id);
+}
+
 gint64 tournament_add_team(RinksTournament *tournament, RinksTeam *team)
 {
     g_return_val_if_fail(tournament != NULL, -1);
@@ -185,3 +192,37 @@ void tournament_update_team(RinksTournament *tournament, RinksTeam *team)
     db_update_team(tournament->db_handle, team);
 }
 
+gint tournament_get_team_count(RinksTournament *tournament)
+{
+    g_return_val_if_fail(tournament != NULL, 0);
+
+    return db_get_team_count(tournament->db_handle);
+}
+
+GList *tournament_get_rounds(RinksTournament *tournament)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_rounds(tournament->db_handle);
+}
+
+RinksRound *tournament_get_round(RinksTournament *tournament, gint64 round_id)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_round(tournament->db_handle, round_id);
+}
+
+gint64 tournament_add_round(RinksTournament *tournament, RinksRound *round)
+{
+    g_return_val_if_fail(tournament != NULL, -1);
+
+    return db_add_round(tournament->db_handle, round);
+}
+
+void tournament_update_round(RinksTournament *tournament, RinksRound *round)
+{
+    g_return_if_fail(tournament != NULL);
+
+    db_update_round(tournament->db_handle, round);
+}

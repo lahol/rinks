@@ -2,6 +2,7 @@
 #include "ui.h"
 #include "ui-dialog-settings.h"
 #include "ui-dialog-teams.h"
+#include "ui-dialog-rounds.h"
 #include "tournament.h"
 
 GtkWidget *main_window = NULL;
@@ -180,6 +181,8 @@ void ui_add_page(int type, const gchar *title, gpointer data)
             page_widget = ui_dialog_teams_open(NULL);
             break;
         case SIDEBAR_TYPE_ROUNDS:
+            page_widget = ui_dialog_rounds_open(NULL);
+            break;
         case SIDEBAR_TYPE_GAMES:
         case SIDEBAR_TYPE_ENCOUNTERS:
         case SIDEBAR_TYPE_RESULTS:
@@ -253,6 +256,7 @@ GtkWidget *ui_create_main_view(void)
     gtk_widget_show_all(scroll);
 
     ui_add_page(SIDEBAR_TYPE_SETTINGS, "Einstellungen", NULL);
+    ui_add_page(SIDEBAR_TYPE_ROUNDS, "Runden", NULL);
     ui_add_page(SIDEBAR_TYPE_TEAMS, "Teams", NULL);
 
     return scroll;

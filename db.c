@@ -1,6 +1,7 @@
 #include "db.h"
 #include <sqlite3.h>
 #include <glib/gprintf.h>
+#include <glib-object.h>
 
 gpointer db_init_database(gchar *path, gboolean clear)
 {
@@ -38,16 +39,22 @@ gpointer db_init_database(gchar *path, gboolean clear)
     CREATE_TABLE("rounds", "(id integer primary key,\
         type varchar,\
         description varchar,\
+        range_start int,\
+        range_end int,\
+        flags int,\
         sequence int)");
 
     CREATE_TABLE("games", "(id integer primary key,\
         description varchar,\
         sequence integer,\
         closed integer)");
-
+    
+    /* abstract team: group:position -> fixed for given round */
     CREATE_TABLE("encounters", "(id integer primary key,\
-        team1 integer,\
-        team2 integer,\
+        abstract_team1 varchar,\
+        abstract_team2 varchar,\
+        real_team1 integer,\
+        real_team2 integer,\
         round integer,\
         game integer,\
         rink integer)");
@@ -84,6 +91,115 @@ void db_close_database(gpointer db_handle)
     if (db_handle != NULL) {
         sqlite3_close(db_handle);
     }
+}
+
+gboolean db_sql_extract_value(sqlite3_stmt *stmt, int colnum, const gchar *name, GType type, gpointer target)
+{
+    const gchar *col_name = sqlite3_column_origin_name(stmt, colnum);
+    if (g_strcmp0(col_name, name) != 0)
+        return FALSE;
+
+    if (target == NULL)
+        return TRUE;
+
+    switch (type) {
+        case G_TYPE_INT:
+            *((gint *)target) = sqlite3_column_int(stmt, colnum);
+            break;
+        case G_TYPE_INT64:
+            *((gint64 *)target) = sqlite3_column_int64(stmt, colnum);
+            break;
+        case G_TYPE_UINT:
+            *((guint *)target) = (guint)sqlite3_column_int(stmt, colnum);
+            break;
+        case G_TYPE_STRING:
+            *((gchar **)target) = g_strdup((gchar *)sqlite3_column_text(stmt, colnum));
+            break;
+        default:
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
+GList *db_get_teams(gpointer db_handle)
+{
+    g_return_val_if_fail(db_handle != NULL, NULL);
+
+    GList *result = NULL;
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    RinksTeam *team;
+
+    int col_count, col;
+    
+    rc = sqlite3_prepare_v2(db_handle, "select * from teams order by id asc", -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+        goto out;
+
+    col_count = sqlite3_column_count(stmt);
+
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        team = g_malloc0(sizeof(RinksTeam));
+        for (col = 0; col < col_count; ++col) {
+#define DBGETVAL(name, type, val) if (db_sql_extract_value(stmt, col, (name), (type), &(val))) continue
+            DBGETVAL("id", G_TYPE_INT64, team->id);
+            DBGETVAL("name", G_TYPE_STRING, team->name);
+            DBGETVAL("skip", G_TYPE_STRING, team->skip);
+            DBGETVAL("group_id", G_TYPE_INT, team->group_id);
+            DBGETVAL("points", G_TYPE_INT, team->points);
+            DBGETVAL("ends", G_TYPE_INT, team->ends);
+            DBGETVAL("stones", G_TYPE_INT, team->stones);
+#undef DBGETVAL
+        }
+
+        result = g_list_append(result, team);
+    }
+
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    return result;
+}
+
+RinksTeam *db_get_team(gpointer db_handle, gint64 team_id)
+{
+    g_return_val_if_fail(db_handle != NULL, NULL);
+
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    RinksTeam *team = NULL;
+
+    int col_count, col;
+
+    gchar *sql = sqlite3_mprintf("select * from teams where id=%" G_GINT64_FORMAT, team_id);
+    rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        goto out;
+
+    col_count = sqlite3_column_count(stmt);
+
+    if ((rc = sqlite3_step(stmt)) != SQLITE_ROW)
+        goto out;
+    team = g_malloc0(sizeof(RinksTeam));
+    for (col = 0; col < col_count; ++col) {
+#define DBGETVAL(name, type, val) if (db_sql_extract_value(stmt, col, (name), (type), &(val))) continue
+            DBGETVAL("id", G_TYPE_INT64, team->id);
+            DBGETVAL("name", G_TYPE_STRING, team->name);
+            DBGETVAL("skip", G_TYPE_STRING, team->skip);
+            DBGETVAL("group_id", G_TYPE_INT, team->group_id);
+            DBGETVAL("points", G_TYPE_INT, team->points);
+            DBGETVAL("ends", G_TYPE_INT, team->ends);
+            DBGETVAL("stones", G_TYPE_INT, team->stones);
+#undef DBGETVAL
+    }
+
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    return team;
 }
 
 gint64 db_add_team(gpointer db_handle, RinksTeam *team)
@@ -163,58 +279,145 @@ void db_update_team(gpointer db_handle, RinksTeam *team)
         return;
 }
 
-GList *db_get_teams(gpointer db_handle)
+gint db_get_team_count(gpointer db_handle)
+{
+    g_return_val_if_fail(db_handle != NULL, 0);
+
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    gint count = 0;
+
+    rc = sqlite3_prepare_v2(db_handle, "select count(*) from teams", -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+        goto out;
+
+    if ((rc = sqlite3_step(stmt)) != SQLITE_ROW)
+        goto out;
+
+    count = sqlite3_column_int(stmt, 0);
+
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    return count;
+}
+
+GList *db_get_rounds(gpointer db_handle)
 {
     g_return_val_if_fail(db_handle != NULL, NULL);
 
     GList *result = NULL;
     int rc;
     sqlite3_stmt *stmt = NULL;
-    RinksTeam *team;
+    RinksRound *round;
 
     int col_count, col;
-    const char *col_name;
-    
-    rc = sqlite3_prepare_v2(db_handle, "select * from teams order by id asc", -1, &stmt, NULL);
+
+    /* TODO: maybe order by sequence -> need to write sequence */
+    rc = sqlite3_prepare_v2(db_handle, "select * from rounds order by id asc", -1, &stmt, NULL);
     if (rc != SQLITE_OK)
         goto out;
 
     col_count = sqlite3_column_count(stmt);
 
     while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-        team = g_malloc0(sizeof(RinksTeam));
+        round = g_malloc0(sizeof(RinksRound));
         for (col = 0; col < col_count; ++col) {
-            col_name = sqlite3_column_origin_name(stmt, col);
-            if (g_strcmp0(col_name, "id") == 0) {
-                team->id = sqlite3_column_int(stmt, col);
-            }
-            else if (g_strcmp0(col_name, "name") == 0) {
-                team->name = g_strdup((gchar *)sqlite3_column_text(stmt, col));
-            }
-            else if (g_strcmp0(col_name, "skip") == 0) {
-                team->skip = g_strdup((gchar *)sqlite3_column_text(stmt, col));
-            }
-            else if (g_strcmp0(col_name, "group_id") == 0) {
-                team->group_id = sqlite3_column_int(stmt, col);
-            }
-            else if (g_strcmp0(col_name, "points") == 0) {
-                team->points = sqlite3_column_int(stmt, col);
-            }
-            else if (g_strcmp0(col_name, "ends") == 0) {
-                team->ends = sqlite3_column_int(stmt, col);
-            }
-            else if (g_strcmp0(col_name, "stones") == 0) {
-                team->stones = sqlite3_column_int(stmt, col);
-            }
+#define DBGETVAL(name, type, val) if (db_sql_extract_value(stmt, col, (name), (type), &(val))) continue
+            DBGETVAL("id", G_TYPE_INT64, round->id);
+            DBGETVAL("type", G_TYPE_INT, round->type);
+            DBGETVAL("description", G_TYPE_STRING, round->description);
+            DBGETVAL("range_start", G_TYPE_INT, round->range_start);
+            DBGETVAL("range_end", G_TYPE_INT, round->range_end);
+            DBGETVAL("flags", G_TYPE_UINT, round->flags);
+#undef DBGETVAL
         }
 
-        result = g_list_append(result, team);
+        result = g_list_append(result, round);
+    }
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    return result;
+}
+
+RinksRound *db_get_round(gpointer db_handle, gint64 round_id)
+{
+    g_return_val_if_fail(db_handle != NULL, NULL);
+
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    RinksRound *round = NULL;
+
+    int col_count, col;
+
+    gchar *sql = sqlite3_mprintf("select * from rounds where id=%" G_GINT64_FORMAT, round_id);
+    rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        goto out;
+
+    col_count = sqlite3_column_count(stmt);
+
+    if ((rc = sqlite3_step(stmt)) != SQLITE_ROW)
+        goto out;
+    round = g_malloc0(sizeof(RinksRound));
+    for (col = 0; col < col_count; ++col) {
+#define DBGETVAL(name, type, val) if (db_sql_extract_value(stmt, col, (name), (type), &(val))) continue
+            DBGETVAL("id", G_TYPE_INT64, round->id);
+            DBGETVAL("type", G_TYPE_INT, round->type);
+            DBGETVAL("description", G_TYPE_STRING, round->description);
+            DBGETVAL("range_start", G_TYPE_INT, round->range_start);
+            DBGETVAL("range_end", G_TYPE_INT, round->range_end);
+            DBGETVAL("flags", G_TYPE_UINT, round->flags);
+#undef DBGETVAL
     }
 
 out:
     if (stmt != NULL)
         sqlite3_finalize(stmt);
-    return result;
+    return round;
+}
+
+gint64 db_add_round(gpointer db_handle, RinksRound *round)
+{
+    g_return_val_if_fail(db_handle != NULL, -1);
+    g_return_val_if_fail(round != NULL, -1);
+
+    int rc;
+
+    gchar *sql = sqlite3_mprintf("insert into rounds (type,description,range_start,range_end,flags) values (%d,%Q,%d,%d,%u)",
+            round->type, round->description,
+            round->range_start, round->range_end,
+            round->flags);
+
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        return -1;
+
+    return sqlite3_last_insert_rowid(db_handle);
+}
+
+void db_update_round(gpointer db_handle, RinksRound *round)
+{
+    g_return_if_fail(db_handle != NULL);
+    g_return_if_fail(round != NULL);
+
+    int rc;
+
+    gchar *sql = sqlite3_mprintf("update rounds set type=%d, description=%Q, range_start=%d,\
+range_end=%d, flags=%u where id=%" G_GINT64_FORMAT,
+            round->type, round->description, round->range_start,
+            round->range_end, round->flags, round->id);
+
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        return;
 }
 
 void db_set_property(gpointer db_handle, const gchar *key, const gchar *value)

@@ -3,6 +3,7 @@
 #include <glib.h>
 #include "data.h"
 #include "teams.h"
+#include "rounds.h"
 
 typedef struct _RinksTournament RinksTournament;
 
@@ -24,5 +25,12 @@ gchar *tournament_get_property(RinksTournament *tournament, const gchar *key);
 void tournament_write_data(RinksTournament *tournament);
 
 GList *tournament_get_teams(RinksTournament *tournament);
+RinksTeam *tournament_get_team(RinksTournament *tournament, gint64 team_id);
 gint64 tournament_add_team(RinksTournament *tournament, RinksTeam *team);
 void tournament_update_team(RinksTournament *tournament, RinksTeam *team);
+gint tournament_get_team_count(RinksTournament *tournament);
+
+GList *tournament_get_rounds(RinksTournament *tournament);
+RinksRound *tournament_get_round(RinksTournament *tournament, gint64 round_id);
+gint64 tournament_add_round(RinksTournament *tournament, RinksRound *round);
+void tournament_update_round(RinksTournament *tournament, RinksRound *round);

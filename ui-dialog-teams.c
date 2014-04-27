@@ -24,7 +24,7 @@ GList *ui_dialog_teams_entries = NULL; /* [element-type: struct UiDialogTeamsEnt
 void ui_dialog_teams_create_entries(void);
 void ui_dialog_teams_add_entry(GtkWidget *table, gint offset, RinksTeam *team, gint ngroups);
 void ui_dialog_teams_clear_entries(void);
-void ui_dialog_rebuild_entries(void);
+void ui_dialog_teams_rebuild_entries(void);
 
 void ui_dialog_teams_apply_cb(gpointer data)
 {
@@ -78,7 +78,7 @@ void ui_dialog_teams_deactivated_cb(gpointer data)
 void ui_dialog_teams_data_changed_cb(gpointer data)
 {
     g_printf("dialog-teams: data changed\n");
-    ui_dialog_rebuild_entries();
+    ui_dialog_teams_rebuild_entries();
 }
 
 void ui_dialog_teams_button_add_team_clicked(GtkButton *button, gpointer data)
@@ -98,11 +98,12 @@ void ui_dialog_teams_button_add_team_clicked(GtkButton *button, gpointer data)
 
     if (ui_dialog_teams_table == NULL) {
         ui_dialog_teams_table = gtk_table_new(1, 4, FALSE);
+
+        gtk_box_pack_start(GTK_BOX(ui_dialog_teams), ui_dialog_teams_table, FALSE, FALSE, 0);
     }
     else {
         gtk_table_get_size(GTK_TABLE(ui_dialog_teams_table), &rows, NULL);
         gtk_table_resize(GTK_TABLE(ui_dialog_teams_table), rows + 1, 4);
-
     }
     ui_dialog_teams_add_entry(ui_dialog_teams_table, rows, team, ngroups);
 
@@ -122,8 +123,6 @@ void ui_dialog_teams_create_entries(void)
 
     if (nteams > 0) {
         ui_dialog_teams_table = gtk_table_new(nteams, 4, FALSE);
-
-        GtkWidget *entry;
 
         for (tmp = teams, offset = 0; tmp != NULL; tmp = g_list_next(tmp), ++offset) {
             ui_dialog_teams_add_entry(ui_dialog_teams_table, offset, (RinksTeam *)tmp->data, ngroups);
@@ -165,7 +164,7 @@ void ui_dialog_teams_add_entry(GtkWidget *table, gint offset, RinksTeam *team, g
     struct UiDialogTeamsEntry *entry = g_malloc0(sizeof(struct UiDialogTeamsEntry));
     entry->team_id = team->id;
 
-    gchar *text = g_strdup_printf("Team %lld:", team->id);
+    gchar *text = g_strdup_printf("Team %" G_GINT64_FORMAT ":", team->id);
     GtkWidget *label = gtk_label_new(text);
     g_free(text);
 
@@ -198,10 +197,13 @@ void ui_dialog_teams_clear_entries(void)
     if (ui_dialog_teams_table != NULL)
         gtk_widget_destroy(ui_dialog_teams_table);
 
+    ui_dialog_teams_table = NULL;
+
     g_list_free_full(ui_dialog_teams_entries, g_free);
+    ui_dialog_teams_entries = NULL;
 }
 
-void ui_dialog_rebuild_entries(void)
+void ui_dialog_teams_rebuild_entries(void)
 {
     ui_dialog_teams_clear_entries();
     ui_dialog_teams_create_entries();
