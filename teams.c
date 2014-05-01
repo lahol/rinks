@@ -60,3 +60,37 @@ GList *teams_sort(GList *list, RinksTeamSortMode mode /*, gboolean inplace */)
             return list;
     }
 }
+
+GList *teams_filter(GList *teams, RinksTeamFilterType type, gpointer data)
+{
+    GList *filtered = NULL;
+    GList *tmp;
+
+    switch (type) {
+        case RinksTeamFilterTypeGroup:
+            for (tmp = teams; tmp != NULL; tmp = g_list_next(tmp)) {
+                if (((RinksTeam *)tmp->data)->group_id == GPOINTER_TO_INT(data)) {
+                    filtered = g_list_prepend(filtered, tmp->data);
+                }
+            }
+            break;
+        default:
+            break;
+    }
+
+    return g_list_reverse(filtered);
+}
+
+GList *teams_get_range(GList *teams, gint64 offset, gint64 count)
+{
+    GList *slice = NULL;
+    GList *tmp;
+    gint64 i;
+
+    for (tmp = teams, i = 1; tmp != NULL; ++i, tmp = g_list_next(tmp)) {
+        if (i >= offset && i < offset + count)
+            slice = g_list_prepend(slice, tmp->data);
+    }
+
+    return g_list_reverse(slice);
+}

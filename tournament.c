@@ -248,3 +248,26 @@ gint64 tournament_add_encounter(RinksTournament *tournament, gint64 round_id,
 
     return db_add_encounter(tournament->db_handle, round_id, abstr_team1, abstr_team2);
 }
+
+void tournament_update_encounter(RinksTournament *tournament, RinksEncounter *encounter)
+{
+    g_return_if_fail(tournament != NULL);
+
+    db_update_encounter(tournament->db_handle, encounter);
+}
+
+GList *tournament_get_encounters(RinksTournament *tournament, gint64 round_id)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_encounters(tournament->db_handle, round_id);
+}
+
+gboolean tournament_existed_encounter_before(RinksTournament *tournament, gint64 round_id,
+                                             gint64 team1, gint64 team2)
+{
+    g_return_val_if_fail(tournament != NULL, FALSE);
+
+    return db_existed_encounter_before(tournament->db_handle, round_id, team1, team2);
+}
+

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "data.h"
+#include "games.h"
 
 typedef enum {
     ROUND_TYPE_NEXT_TO_GROUP,
@@ -10,7 +11,8 @@ typedef enum {
 
 typedef enum {
     RinksRoundFlagEncountersCreated = 1 << 0,
-    RinksRoundFlagDone = 1 << 1
+    RinksRoundFlagDone = 1 << 1,
+    RinksRoundFlagAllowReencounters = 1 << 2
 } RinksRoundFlag;
 
 typedef struct {
@@ -26,3 +28,4 @@ typedef struct {
 void round_free(RinksRound *round);
 
 void rounds_create_encounters(gint64 round_id);
+void rounds_create_games(gint64 round_id, RinksGameOrder order);

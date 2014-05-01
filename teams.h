@@ -30,3 +30,12 @@ typedef enum {
 } RinksTeamSortMode;
 
 GList *teams_sort(GList *list, RinksTeamSortMode mode);
+
+typedef enum {
+    RinksTeamFilterTypeGroup
+} RinksTeamFilterType;
+
+/* creates a new list, but does not copy data, just references it */
+GList *teams_filter(GList *teams, RinksTeamFilterType type, gpointer data);
+/* offset is 1-based */
+GList *teams_get_range(GList *teams, gint64 offset, gint64 count);

@@ -3,6 +3,9 @@
 #include "ui-dialog-settings.h"
 #include "ui-dialog-teams.h"
 #include "ui-dialog-rounds.h"
+#include "ui-dialog-games.h"
+#include "ui-dialog-round-overview.h"
+#include "application.h"
 #include "tournament.h"
 
 GtkWidget *main_window = NULL;
@@ -19,7 +22,8 @@ enum {
     SIDEBAR_TYPE_ROUNDS,
     SIDEBAR_TYPE_GAMES,
     SIDEBAR_TYPE_ENCOUNTERS,
-    SIDEBAR_TYPE_RESULTS
+    SIDEBAR_TYPE_RESULTS,
+    SIDEBAR_TYPE_ROUND_OVERVIEW
 };
 
 enum {
@@ -58,21 +62,22 @@ void ui_dialog_run_callback(GtkWidget *page, UiDialogCallbackType type, gpointer
 
 }
 
-void ui_change_view(GtkWidget *new_page)
+void ui_change_view(GtkWidget *new_page, gpointer pagedata)
 {
     gint last = gtk_notebook_get_current_page(GTK_NOTEBOOK(main_view_notebook));
     gint pagenum = gtk_notebook_page_num(GTK_NOTEBOOK(main_view_notebook), new_page);
 
-    if (last == pagenum || pagenum == -1)
+    if (pagenum == -1)
         return;
 
     GtkWidget *widget = NULL;
+    gpointer last_pagedata = NULL;
 
     widget = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), last);
-    ui_dialog_run_callback(widget, CB_deactivated, NULL);
+    ui_dialog_run_callback(widget, CB_deactivated, last_pagedata);
 
     gtk_notebook_set_current_page(GTK_NOTEBOOK(main_view_notebook), pagenum);
-    ui_dialog_run_callback(new_page, CB_activated, NULL);
+    ui_dialog_run_callback(new_page, CB_activated, pagedata);
 }
 
 void ui_set_action_callback(void (*callback)(gchar *action))
@@ -100,7 +105,7 @@ static void ui_sidebar_selection_changed(GtkTreeSelection *selection, gpointer d
         gtk_tree_model_get(model, &iter, SIDEBAR_COLUMN_PAGE, &page_widget,
                 SIDEBAR_COLUMN_DATA, &pagedata, -1);
         g_printf("selection: %p: %p\n", page_widget, pagedata);
-        ui_change_view(page_widget);
+        ui_change_view(page_widget, pagedata);
     }
 }
 
@@ -169,10 +174,64 @@ void ui_update_sidebar_tree(RinksTournament *tournament)
 {
 }
 
+gboolean ui_sidebar_get_item(gint type, GtkTreeIter *iter, gpointer data)
+{
+    GtkTreeIter *current, *child;
+    GQueue *stack = g_queue_new();
+
+    gint rowtype;
+    gpointer rowdata;
+
+    current = g_malloc0(sizeof(GtkTreeIter));
+    if (!gtk_tree_model_get_iter_first(GTK_TREE_MODEL(main_sidebar_tree), current)) {
+        g_free(current);
+        return FALSE;
+    }
+    g_queue_push_head(stack, current);
+
+    gboolean found = FALSE;
+
+    /* TODO: implement dfs correctly */
+    while (!found && !g_queue_is_empty(stack)) {
+        current = g_queue_peek_head(stack);
+        if (gtk_tree_model_iter_has_child(GTK_TREE_MODEL(main_sidebar_tree), current)) {
+            child = g_malloc0(sizeof(GtkTreeIter));
+            gtk_tree_model_iter_children(GTK_TREE_MODEL(main_sidebar_tree), child, current);
+            g_queue_push_head(stack, child);
+        }
+        else {
+            current = g_queue_pop_head(stack);
+            do {
+                gtk_tree_model_get(GTK_TREE_MODEL(main_sidebar_tree), current,
+                        SIDEBAR_COLUMN_TYPE, &rowtype,
+                        SIDEBAR_COLUMN_DATA, &rowdata,
+                        -1);
+                if (rowtype == type) {
+                    if ((data && rowdata &&
+                            ((UiDialogPageData *)data)->id == ((UiDialogPageData *)rowdata)->id) ||
+                            (data == NULL && rowdata == NULL)) {
+                        if (iter) *iter = *current;
+                        g_printf("found parent iter\n");
+                        found = TRUE;
+                    }
+                }
+            } while (!found && gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), current));
+            g_free(current);
+        }
+    }
+
+    /* TODO: glib >= 2.32, reimplement this if necessary */
+    g_queue_free_full(stack, g_free);
+
+    return found;
+}
+
 void ui_add_page(int type, const gchar *title, gpointer data)
 {
     GtkWidget *page_widget = NULL;
     gint pagenum = -1;
+    GtkTreeIter parentiter;
+    gboolean have_parent_iter = FALSE;
     switch (type) {
         case SIDEBAR_TYPE_SETTINGS:
             page_widget = ui_dialog_settings_open(NULL);
@@ -184,6 +243,13 @@ void ui_add_page(int type, const gchar *title, gpointer data)
             page_widget = ui_dialog_rounds_open(NULL);
             break;
         case SIDEBAR_TYPE_GAMES:
+            have_parent_iter = ui_sidebar_get_item(SIDEBAR_TYPE_ROUNDS, &parentiter, NULL);
+            page_widget = ui_dialog_games_open(data);
+            break;
+        case SIDEBAR_TYPE_ROUND_OVERVIEW:
+            have_parent_iter = ui_sidebar_get_item(SIDEBAR_TYPE_ROUNDS, &parentiter, NULL);
+            page_widget = ui_dialog_round_overview_open(data);
+            break;
         case SIDEBAR_TYPE_ENCOUNTERS:
         case SIDEBAR_TYPE_RESULTS:
             break;
@@ -192,12 +258,14 @@ void ui_add_page(int type, const gchar *title, gpointer data)
     if (page_widget == NULL)
         return;
 
-    pagenum = gtk_notebook_append_page(GTK_NOTEBOOK(main_view_notebook), page_widget, NULL);
-    if (pagenum == -1)
-        return;
+    if (gtk_notebook_page_num(GTK_NOTEBOOK(main_view_notebook), page_widget) == -1) {
+        pagenum = gtk_notebook_append_page(GTK_NOTEBOOK(main_view_notebook), page_widget, NULL);
+        if (pagenum == -1)
+            return;
+    }
 
     GtkTreeIter iter;
-    gtk_tree_store_append(main_sidebar_tree, &iter, NULL);
+    gtk_tree_store_append(main_sidebar_tree, &iter, have_parent_iter ? &parentiter : NULL);
 
     gtk_tree_store_set(main_sidebar_tree, &iter,
             SIDEBAR_COLUMN_LABEL, title,
@@ -256,8 +324,8 @@ GtkWidget *ui_create_main_view(void)
     gtk_widget_show_all(scroll);
 
     ui_add_page(SIDEBAR_TYPE_SETTINGS, "Einstellungen", NULL);
-    ui_add_page(SIDEBAR_TYPE_ROUNDS, "Runden", NULL);
     ui_add_page(SIDEBAR_TYPE_TEAMS, "Teams", NULL);
+    ui_add_page(SIDEBAR_TYPE_ROUNDS, "Runden", NULL);
 
     return scroll;
 }
@@ -375,11 +443,88 @@ void ui_update_view(void)
     ui_dialog_run_callback(current, CB_update, NULL);
 }
 
+/* clear/create widgets specific for current tournament */
+void ui_clear_tournament_specific_pages(void)
+{
+    g_printf("clear tournament specific widgets\n");
+    GtkTreeIter *iter, *child, next;
+    GQueue stack;
+    g_queue_init(&stack);
+
+    gint rowtype;
+    gpointer rowdata;
+    gboolean valid;
+
+    iter = g_malloc0(sizeof(GtkTreeIter));
+    if (!gtk_tree_model_get_iter_first(GTK_TREE_MODEL(main_sidebar_tree), iter)) {
+        g_free(iter);
+        return;
+    }
+    g_queue_push_head(&stack, iter);
+
+    /* TODO: implement dfs correctly */
+    while (!g_queue_is_empty(&stack)) {
+        iter = g_queue_peek_head(&stack);
+        if (gtk_tree_model_iter_has_child(GTK_TREE_MODEL(main_sidebar_tree), iter)) {
+            child = g_malloc0(sizeof(GtkTreeIter));
+            gtk_tree_model_iter_children(GTK_TREE_MODEL(main_sidebar_tree), child, iter);
+            g_queue_push_head(&stack, child);
+        }
+        else {
+            iter = g_queue_pop_head(&stack);
+            valid = TRUE;
+            while (valid) {
+                next = *iter;
+                valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), &next);
+                gtk_tree_model_get(GTK_TREE_MODEL(main_sidebar_tree), iter,
+                        SIDEBAR_COLUMN_TYPE, &rowtype,
+                        SIDEBAR_COLUMN_DATA, &rowdata,
+                        -1);
+                g_printf("type: %d, data: %p, valid: %d\n", rowtype, rowdata, valid);
+                if (rowtype == SIDEBAR_TYPE_ENCOUNTERS ||
+                    rowtype == SIDEBAR_TYPE_ROUND_OVERVIEW ||
+                    rowtype == SIDEBAR_TYPE_GAMES) {
+                    g_printf("remove type %d (%p)\n", rowtype, rowdata);
+                    gtk_tree_store_remove(GTK_TREE_STORE(main_sidebar_tree), iter);
+                    if (rowdata)
+                        g_free(rowdata);
+                }
+                *iter = next;
+            }
+            g_free(iter);
+        }
+    }
+}
+
+void ui_create_tournament_specific_pages(void)
+{
+    g_printf("create tournament specific widgets\n");
+    RinksTournament *tournament = application_get_current_tournament();
+    if (tournament == NULL)
+        return;
+
+    GList *rounds = tournament_get_rounds(tournament);
+
+    GList *tmp;
+    UiDialogPageData *pgdata;
+    for (tmp = rounds; tmp != NULL; tmp = g_list_next(tmp)) {
+        pgdata = g_malloc0(sizeof(UiDialogPageData));
+        pgdata->id = ((RinksRound *)tmp->data)->id;
+
+        ui_add_page(SIDEBAR_TYPE_ROUND_OVERVIEW, ((RinksRound *)tmp->data)->description, pgdata);
+    }
+
+    g_list_free_full(rounds, (GDestroyNotify)round_free);
+}
+
 void ui_data_changed(void)
 {
     gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(main_view_notebook));
     gint i;
     GtkWidget *page;
+
+    ui_clear_tournament_specific_pages();
+    ui_create_tournament_specific_pages();
 
     for (i = 0; i < npages; ++i) {
         page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), i);
@@ -394,6 +539,8 @@ void ui_cleanup(void)
     gint npages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(main_view_notebook));
     gint i;
     GtkWidget *page;
+
+    ui_clear_tournament_specific_pages();
 
     for (i = 0; i < npages; ++i) {
         page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(main_view_notebook), i);

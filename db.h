@@ -4,6 +4,7 @@
 #include "data.h"
 #include "teams.h"
 #include "rounds.h"
+#include "encounters.h"
 
 gpointer db_open_database(gchar *path, gboolean clear);
 void db_close_database(gpointer db_handle);
@@ -26,3 +27,6 @@ void db_round_unset_flag(gpointer db_handle, gint64 round_id, guint flag);
 
 gint64 db_add_encounter(gpointer db_handle, gint64 round_id,
                         const gchar *abstr_team1, const gchar *abstr_team2);
+void db_update_encounter(gpointer db_handle, RinksEncounter *encounter);
+GList *db_get_encounters(gpointer db_handle, gint64 round_id);
+gboolean db_existed_encounter_before(gpointer db_handle, gint64 round_id, gint64 team1, gint64 team2);

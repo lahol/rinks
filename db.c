@@ -314,7 +314,7 @@ GList *db_get_rounds(gpointer db_handle)
     int col_count, col;
 
     /* TODO: maybe order by sequence -> need to write sequence */
-    rc = sqlite3_prepare_v2(db_handle, "select * from rounds order by id asc", -1, &stmt, NULL);
+    rc = sqlite3_prepare_v2(db_handle, "select * from rounds order by id desc", -1, &stmt, NULL);
     if (rc != SQLITE_OK)
         goto out;
 
@@ -334,7 +334,7 @@ GList *db_get_rounds(gpointer db_handle)
         }
 
         g_printf("get rounds: %" G_GINT64_FORMAT " flags: 0x%x\n", round->id, round->flags);
-        result = g_list_append(result, round);
+        result = g_list_prepend(result, round);
     }
 out:
     if (stmt != NULL)
@@ -535,4 +535,98 @@ G_GINT64_FORMAT ",%Q,%Q,-1,-1)",
     }
 
     return sqlite3_last_insert_rowid(db_handle);
+}
+
+void db_update_encounter(gpointer db_handle, RinksEncounter *encounter)
+{
+    g_return_if_fail(db_handle != NULL);
+    g_return_if_fail(encounter != NULL);
+
+    int rc;
+
+    gchar *sql = sqlite3_mprintf("update encounters set abstract_team1=%Q, abstract_team2=%Q, real_team1=%"\
+G_GINT64_FORMAT ", real_team2=%" G_GINT64_FORMAT ", round=% " G_GINT64_FORMAT ", game=%" G_GINT64_FORMAT\
+", rink=%d where id=%" G_GINT64_FORMAT, encounter->abstract_team1, encounter->abstract_team2,
+            encounter->real_team1, encounter->real_team2, encounter->round, encounter->game,
+            encounter->rink);
+
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        return;
+}
+
+GList *db_get_encounters(gpointer db_handle, gint64 round_id)
+{
+    g_return_val_if_fail(db_handle != NULL, NULL);
+
+    GList *result = NULL;
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    RinksEncounter *encounter;
+
+    int col_count, col;
+
+    char *sql = sqlite3_mprintf("select * from encounters where round=%" G_GINT64_FORMAT " order by id desc",
+                                round_id);
+    rc = sqlite3_prepare_v2(db_handle, sql, -1, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        goto out;
+    
+    col_count = sqlite3_column_count(stmt);
+
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        encounter = g_malloc0(sizeof(RinksEncounter));
+        for (col = 0; col < col_count; ++col) {
+#define DBGETVAL(name, type, val) if (db_sql_extract_value(stmt, col, (name), (type), &(val))) continue
+            DBGETVAL("id", G_TYPE_INT64, encounter->id);
+            DBGETVAL("abstract_team1", G_TYPE_STRING, encounter->abstract_team1);
+            DBGETVAL("abstract_team2", G_TYPE_STRING, encounter->abstract_team2);
+            DBGETVAL("real_team1", G_TYPE_INT64, encounter->real_team1);
+            DBGETVAL("real_team2", G_TYPE_INT64, encounter->real_team2);
+            DBGETVAL("round", G_TYPE_INT64, encounter->round);
+            DBGETVAL("game", G_TYPE_INT64, encounter->game);
+            DBGETVAL("rink", G_TYPE_INT, encounter->rink);
+#undef DBGETVAL
+        }
+
+        result = g_list_prepend(result, encounter);
+    }
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    return result;
+}
+
+gboolean db_existed_encounter_before(gpointer db_handle, gint64 round_id, gint64 team1, gint64 team2)
+{
+    g_return_val_if_fail(db_handle != NULL, FALSE);
+
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    gint count = 0;
+
+    char *sql = sqlite3_mprintf("select count(*) from encounters where (real_team1=%" G_GINT64_FORMAT " and real_team2=%"\
+G_GINT64_FORMAT ") or (real_team1=%" G_GINT64_FORMAT " and real_team2=%" G_GINT64_FORMAT ") and round < %" G_GINT64_FORMAT,
+            team1, team2, team2, team1, round_id);
+
+    rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+        goto out;
+
+    if ((rc = sqlite3_step(stmt)) != SQLITE_ROW)
+        goto out;
+
+    count = sqlite3_column_int(stmt, 0);
+
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    if (sql != NULL)
+        sqlite3_free(sql);
+
+    return (count > 0 ? TRUE : FALSE);
 }

@@ -22,6 +22,11 @@ typedef struct {
     void (*data_changed_cb)(gpointer);
 } UiDialogCallbacks;
 
+typedef struct {
+    gint32 type;
+    gint64 id;
+} UiDialogPageData;
+
 typedef enum {
     CB_apply,
     CB_destroy,
