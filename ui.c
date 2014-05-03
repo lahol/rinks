@@ -176,48 +176,52 @@ void ui_update_sidebar_tree(RinksTournament *tournament)
 
 gboolean ui_sidebar_get_item(gint type, GtkTreeIter *iter, gpointer data)
 {
-    GtkTreeIter *current, *child;
+    GtkTreeIter *current, *child, tmp;
     GQueue *stack = g_queue_new();
 
     gint rowtype;
     gpointer rowdata;
 
-    current = g_malloc0(sizeof(GtkTreeIter));
-    if (!gtk_tree_model_get_iter_first(GTK_TREE_MODEL(main_sidebar_tree), current)) {
-        g_free(current);
+    if (!gtk_tree_model_get_iter_first(GTK_TREE_MODEL(main_sidebar_tree), &tmp)) {
         return FALSE;
     }
-    g_queue_push_head(stack, current);
+
+    do {
+        current = g_malloc(sizeof(GtkTreeIter));
+        *current = tmp;
+        g_queue_push_head(stack, current);
+    } while (gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), &tmp));
 
     gboolean found = FALSE;
 
     /* TODO: implement dfs correctly */
     while (!found && !g_queue_is_empty(stack)) {
-        current = g_queue_peek_head(stack);
-        if (gtk_tree_model_iter_has_child(GTK_TREE_MODEL(main_sidebar_tree), current)) {
-            child = g_malloc0(sizeof(GtkTreeIter));
-            gtk_tree_model_iter_children(GTK_TREE_MODEL(main_sidebar_tree), child, current);
-            g_queue_push_head(stack, child);
+        current = g_queue_pop_head(stack);
+
+        gtk_tree_model_get(GTK_TREE_MODEL(main_sidebar_tree), current,
+                SIDEBAR_COLUMN_TYPE, &rowtype,
+                SIDEBAR_COLUMN_DATA, &rowdata,
+                -1);
+        if (rowtype == type) {
+            if ((data && rowdata &&
+                    ((UiDialogPageData *)data)->id == ((UiDialogPageData *)rowdata)->id) ||
+                    (data == NULL && rowdata == NULL)) {
+                if (iter) *iter = *current;
+                g_printf("found parent iter\n");
+                found = TRUE;
+            }
         }
-        else {
-            current = g_queue_pop_head(stack);
+
+        if (!found && gtk_tree_model_iter_has_child(GTK_TREE_MODEL(main_sidebar_tree), current)) {
+            gtk_tree_model_iter_children(GTK_TREE_MODEL(main_sidebar_tree), &tmp, current);
             do {
-                gtk_tree_model_get(GTK_TREE_MODEL(main_sidebar_tree), current,
-                        SIDEBAR_COLUMN_TYPE, &rowtype,
-                        SIDEBAR_COLUMN_DATA, &rowdata,
-                        -1);
-                if (rowtype == type) {
-                    if ((data && rowdata &&
-                            ((UiDialogPageData *)data)->id == ((UiDialogPageData *)rowdata)->id) ||
-                            (data == NULL && rowdata == NULL)) {
-                        if (iter) *iter = *current;
-                        g_printf("found parent iter\n");
-                        found = TRUE;
-                    }
-                }
-            } while (!found && gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), current));
-            g_free(current);
+                child = g_malloc(sizeof(GtkTreeIter));
+                *child = tmp;
+                g_queue_push_head(stack, child);
+            } while (gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), &tmp));
         }
+
+        g_free(current);
     }
 
     /* TODO: glib >= 2.32, reimplement this if necessary */
@@ -443,56 +447,90 @@ void ui_update_view(void)
     ui_dialog_run_callback(current, CB_update, NULL);
 }
 
+void ui_clear_tree_branch(GtkTreeModel *model, GtkTreeIter *iter)
+{
+    GQueue stack;
+    g_queue_init(&stack);
+
+    GtkTreeIter *current, *child, tmp;
+    gpointer rowdata;
+
+    current = g_malloc0(sizeof(GtkTreeIter));
+    *current = *iter;
+
+    g_queue_push_head(&stack, current);
+
+    while (!g_queue_is_empty(&stack)) {
+        current = g_queue_peek_head(&stack);
+        if (gtk_tree_model_iter_has_child(model, current)) {
+            gtk_tree_model_iter_children(model, &tmp, current);
+            do {
+                child = g_malloc(sizeof(GtkTreeIter));
+                *child = tmp;
+                g_queue_push_head(&stack, child);
+            } while (gtk_tree_model_iter_next(model, &tmp));
+        }
+        else {
+            current = g_queue_pop_head(&stack);
+            gtk_tree_model_get(model, current,
+                    SIDEBAR_COLUMN_DATA, &rowdata,
+                    -1);
+            gtk_tree_store_remove(GTK_TREE_STORE(model), current);
+            g_free(rowdata);
+        }
+
+        g_free(current);
+    }
+}
+
 /* clear/create widgets specific for current tournament */
 void ui_clear_tournament_specific_pages(void)
 {
     g_printf("clear tournament specific widgets\n");
-    GtkTreeIter *iter, *child, next;
+    GtkTreeIter *iter, *child, tmp;
     GQueue stack;
     g_queue_init(&stack);
 
     gint rowtype;
     gpointer rowdata;
-    gboolean valid;
 
-    iter = g_malloc0(sizeof(GtkTreeIter));
-    if (!gtk_tree_model_get_iter_first(GTK_TREE_MODEL(main_sidebar_tree), iter)) {
-        g_free(iter);
+    if (!gtk_tree_model_get_iter_first(GTK_TREE_MODEL(main_sidebar_tree), &tmp)) {
         return;
     }
-    g_queue_push_head(&stack, iter);
+
+    do {
+        iter = g_malloc(sizeof(GtkTreeIter));
+        *iter = tmp;
+        g_queue_push_head(&stack, iter);
+    } while (gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), &tmp));
 
     /* TODO: implement dfs correctly */
     while (!g_queue_is_empty(&stack)) {
-        iter = g_queue_peek_head(&stack);
-        if (gtk_tree_model_iter_has_child(GTK_TREE_MODEL(main_sidebar_tree), iter)) {
-            child = g_malloc0(sizeof(GtkTreeIter));
-            gtk_tree_model_iter_children(GTK_TREE_MODEL(main_sidebar_tree), child, iter);
-            g_queue_push_head(&stack, child);
+        iter = g_queue_pop_head(&stack);
+        
+        gtk_tree_model_get(GTK_TREE_MODEL(main_sidebar_tree), iter,
+                SIDEBAR_COLUMN_TYPE, &rowtype,
+                SIDEBAR_COLUMN_DATA, &rowdata,
+                -1);
+
+        g_printf("type: %d, data: %p\n", rowtype, rowdata);
+
+        if (rowtype == SIDEBAR_TYPE_ENCOUNTERS ||
+            rowtype == SIDEBAR_TYPE_ROUND_OVERVIEW ||
+            rowtype == SIDEBAR_TYPE_GAMES) {
+            g_printf("remove type %d (%p)\n", rowtype, rowdata);
+            ui_clear_tree_branch(GTK_TREE_MODEL(main_sidebar_tree), iter);
         }
-        else {
-            iter = g_queue_pop_head(&stack);
-            valid = TRUE;
-            while (valid) {
-                next = *iter;
-                valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), &next);
-                gtk_tree_model_get(GTK_TREE_MODEL(main_sidebar_tree), iter,
-                        SIDEBAR_COLUMN_TYPE, &rowtype,
-                        SIDEBAR_COLUMN_DATA, &rowdata,
-                        -1);
-                g_printf("type: %d, data: %p, valid: %d\n", rowtype, rowdata, valid);
-                if (rowtype == SIDEBAR_TYPE_ENCOUNTERS ||
-                    rowtype == SIDEBAR_TYPE_ROUND_OVERVIEW ||
-                    rowtype == SIDEBAR_TYPE_GAMES) {
-                    g_printf("remove type %d (%p)\n", rowtype, rowdata);
-                    gtk_tree_store_remove(GTK_TREE_STORE(main_sidebar_tree), iter);
-                    if (rowdata)
-                        g_free(rowdata);
-                }
-                *iter = next;
-            }
-            g_free(iter);
+        else if (gtk_tree_model_iter_has_child(GTK_TREE_MODEL(main_sidebar_tree), iter)) {
+            gtk_tree_model_iter_children(GTK_TREE_MODEL(main_sidebar_tree), &tmp, iter);
+            do {
+                child = g_malloc(sizeof(GtkTreeIter));
+                *child = tmp;
+                g_queue_push_head(&stack, child);
+            } while (gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), &tmp));
         }
+
+        g_free(iter);
     }
 }
 
