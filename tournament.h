@@ -5,6 +5,7 @@
 #include "teams.h"
 #include "rounds.h"
 #include "encounters.h"
+#include "games.h"
 
 typedef struct _RinksTournament RinksTournament;
 
@@ -44,3 +45,12 @@ void tournament_update_encounter(RinksTournament *tournament, RinksEncounter *en
 GList *tournament_get_encounters(RinksTournament *tournament, gint64 round_id);
 gboolean tournament_existed_encounter_before(RinksTournament *tournament, gint64 round_id,
                                              gint64 team1, gint64 team2);
+
+gint64 tournament_add_game(RinksTournament *tournament, RinksGame *game);
+GList *tournament_get_games(RinksTournament *tournament);
+
+void tournament_set_result(RinksTournament *tournament, RinksResult *result);
+RinksResult *tournament_get_result(RinksTournament *tournament, gint64 encounter, gint64 team);
+GList *tournament_get_team_result(RinksTournament *tournament, gint64 team);
+
+void tournament_update_standings(RinksTournament *tournament);

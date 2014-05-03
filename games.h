@@ -9,5 +9,8 @@ typedef enum {
 } RinksGameOrder;
 
 typedef struct {
-    GList *encounters; /* [element-type: RinksEncounter] */
+    gint64 id;
+    gchar *description;
+    gint32 sequence;
+    gint32 closed;
 } RinksGame;

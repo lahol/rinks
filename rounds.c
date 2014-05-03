@@ -185,6 +185,8 @@ void rounds_map_teams_to_encounters(RinksTournament *tournament, RinksRound *rou
     for (i = 0, tmp = es; i + 1 < team_count && tmp != NULL; tmp = g_list_next(tmp), i += 2) {
         ((RinksEncounter *)tmp->data)->real_team1 = team_ids[i];
         ((RinksEncounter *)tmp->data)->real_team2 = team_ids[i + 1];
+        g_printf("map encounter: %" G_GINT64_FORMAT ": %" G_GINT64_FORMAT " vs %" G_GINT64_FORMAT "\n",
+                ((RinksEncounter *)tmp->data)->id, team_ids[i], team_ids[i + 1]);
         tournament_update_encounter(tournament, (RinksEncounter *)tmp->data);
     }
 }
@@ -192,6 +194,29 @@ void rounds_map_teams_to_encounters(RinksTournament *tournament, RinksRound *rou
 void rounds_create_games_for_encounters(RinksTournament *tournament, RinksRound *round,
                                         GList *teams, GList *encounters, RinksGameOrder order)
 {
+    gint64 game_id;
+    GList *tmp;
+    gint32 rinkcount = tournament_get_rink_count(tournament);
+    gint32 cur_rink = rinkcount;
+
+    gint game_count = 0;
+    RinksGame game;
+
+    game.closed = 0;
+    game.sequence = 0;
+
+    for (tmp = encounters; tmp != NULL; tmp = g_list_next(tmp)) {
+        if (++cur_rink > rinkcount) {
+            game.description = g_strdup_printf("%s, Spiel %d", round->description, ++game_count);
+            game_id = tournament_add_game(tournament, &game);
+            g_free(game.description);
+
+            cur_rink = 1;
+        }
+
+        ((RinksEncounter *)tmp->data)->game = game_id;
+        tournament_update_encounter(tournament, (RinksEncounter *)tmp->data);
+    }
 }
 
 void rounds_create_games(gint64 round_id, RinksGameOrder order)

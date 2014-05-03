@@ -30,3 +30,10 @@ gint64 db_add_encounter(gpointer db_handle, gint64 round_id,
 void db_update_encounter(gpointer db_handle, RinksEncounter *encounter);
 GList *db_get_encounters(gpointer db_handle, gint64 round_id);
 gboolean db_existed_encounter_before(gpointer db_handle, gint64 round_id, gint64 team1, gint64 team2);
+
+gint64 db_add_game(gpointer db_handle, RinksGame *game);
+GList *db_get_games(gpointer db_handle);
+
+void db_set_result(gpointer db_handle, RinksResult *result);
+RinksResult *db_get_result(gpointer db_handle, gint64 encounter, gint64 team);
+GList *db_get_team_results(gpointer db_handle, gint64 team);

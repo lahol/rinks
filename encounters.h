@@ -13,6 +13,15 @@ typedef struct {
     gint32 rink;
 } RinksEncounter;
 
+typedef struct {
+    gint64 id;
+    gint64 team;
+    gint64 encounter;
+    gint32 points;
+    gint32 ends;
+    gint32 stones;
+} RinksResult;
+
 void encounter_free(RinksEncounter *encounter);
 
 /* group a:1 -> group a:3 -> group b:1 -> rank 1 -> rank 2*/

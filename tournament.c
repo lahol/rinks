@@ -271,3 +271,70 @@ gboolean tournament_existed_encounter_before(RinksTournament *tournament, gint64
     return db_existed_encounter_before(tournament->db_handle, round_id, team1, team2);
 }
 
+gint64 tournament_add_game(RinksTournament *tournament, RinksGame *game)
+{
+    g_return_val_if_fail(tournament != NULL, -1);
+
+    return db_add_game(tournament->db_handle, game);
+}
+
+GList *tournament_get_games(RinksTournament *tournament)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_games(tournament->db_handle);
+}
+
+void tournament_set_result(RinksTournament *tournament, RinksResult *result)
+{
+    g_return_if_fail(tournament != NULL);
+
+    return db_set_result(tournament->db_handle, result);
+}
+
+RinksResult *tournament_get_result(RinksTournament *tournament, gint64 encounter, gint64 team)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_result(tournament->db_handle, encounter, team);
+}
+
+GList *tournament_get_team_result(RinksTournament *tournament, gint64 team)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_team_results(tournament->db_handle, team);
+}
+
+void tournament_update_standings(RinksTournament *tournament)
+{
+    g_return_if_fail(tournament != NULL);
+
+    GList *teams = tournament_get_teams(tournament);
+    if (teams == NULL)
+        return;
+    RinksTeam *team;
+
+    GList *tmp;
+    GList *results, *r;
+    for (tmp = teams; tmp != NULL; tmp = g_list_next(tmp)) {
+        team = (RinksTeam *)tmp->data;
+        results = tournament_get_team_result(tournament, team->id);
+
+        team->points = 0;
+        team->ends = 0;
+        team->stones = 0;
+        team->valid_keys = RinksTeamKeyPoints | RinksTeamKeyEnds | RinksTeamKeyStones;
+
+        for (r = results; r != NULL; r = g_list_next(r)) {
+            team->points += ((RinksResult *)r->data)->points;
+            team->ends   += ((RinksResult *)r->data)->ends;
+            team->stones += ((RinksResult *)r->data)->stones;
+        }
+
+        g_list_free_full(results, g_free);
+        tournament_update_team(tournament, team);
+    }
+
+    g_list_free_full(teams, (GDestroyNotify)team_free);
+}
