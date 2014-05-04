@@ -107,7 +107,7 @@ void ui_dialog_round_overview_create_entries(void)
     if (tournament == NULL)
         return;
 
-    GList *encounters = tournament_get_encounters(tournament, page_data->id);
+    GList *encounters = tournament_get_encounters(tournament, page_data->id, 0);
     GList *tmp;
 
     guint nencounters = g_list_length(encounters);

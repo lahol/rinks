@@ -42,12 +42,16 @@ void tournament_round_unset_flag(RinksTournament *tournament, gint64 round_id, g
 gint64 tournament_add_encounter(RinksTournament *tournament, gint64 round_id,
                                 const gchar *abstr_team1, const gchar *abstr_team2);
 void tournament_update_encounter(RinksTournament *tournament, RinksEncounter *encounter);
-GList *tournament_get_encounters(RinksTournament *tournament, gint64 round_id);
+GList *tournament_get_encounters(RinksTournament *tournament, gint64 round_id, gint64 game_id);
+RinksEncounter *tournament_get_encounter(RinksTournament *tournament, gint64 encounter_id);
 gboolean tournament_existed_encounter_before(RinksTournament *tournament, gint64 round_id,
                                              gint64 team1, gint64 team2);
+void tournament_encounter_set_game(RinksTournament *tournament, gint64 encounter_id, gint64 game_id);
 
 gint64 tournament_add_game(RinksTournament *tournament, RinksGame *game);
 GList *tournament_get_games(RinksTournament *tournament);
+RinksGame *tournament_get_game(RinksTournament *tournament, gint64 game_id);
+void tournament_update_game(RinksTournament *tournament, RinksGame *game);
 
 void tournament_set_result(RinksTournament *tournament, RinksResult *result);
 RinksResult *tournament_get_result(RinksTournament *tournament, gint64 encounter, gint64 team);

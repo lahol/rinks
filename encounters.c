@@ -1,6 +1,7 @@
 #include "encounters.h"
 #include <stdio.h>
 #include <string.h>
+#include <glib/gprintf.h>
 
 void encounter_free(RinksEncounter *encounter)
 {
@@ -51,7 +52,7 @@ gboolean encounters_encounter_parse_abstract_team(RinksEncounter *encounter, gin
     return TRUE;
 }
 
-gint encounters_sort_compare(RinksEncounter *a, RinksEncounter *b)
+gint encounters_sort_compare_logical(RinksEncounter *a, RinksEncounter *b)
 {
     if (a == NULL || b == NULL)
         return 0;
@@ -61,6 +62,11 @@ gint encounters_sort_compare(RinksEncounter *a, RinksEncounter *b)
         return 1;
 
     gint32 ga, gb, pa, pb;
+
+    if (a->round < b->round)
+        return -1;
+    else if (a->round > b->round)
+        return 1;
 
     if (!encounters_encounter_parse_abstract_team(a, 1, &ga, &pa))
         return -1;
@@ -90,9 +96,56 @@ gint encounters_sort_compare(RinksEncounter *a, RinksEncounter *b)
     return 0;
 }
 
-GList *encounters_sort(GList *encounters)
+gint encounters_sort_compare_rinks(RinksEncounter *a, RinksEncounter *b)
 {
-    return g_list_sort(encounters, (GCompareFunc)encounters_sort_compare);
+    if (a == NULL || b == NULL)
+        return 0;
+    if (a == NULL)
+        return -1;
+    if (b == NULL)
+        return 1;
+
+    if (a->rink < b->rink)
+        return -1;
+    else if (a->rink > b->rink)
+        return 1;
+    else
+        return 0;
+}
+
+GList *encounters_sort(GList *encounters, RinksEncounterSortMode mode)
+{
+    switch (mode) {
+        case RinksEncounterSortLogical:
+            return g_list_sort(encounters, (GCompareFunc)encounters_sort_compare_logical);
+        case RinksEncounterSortRinks:
+            return g_list_sort(encounters, (GCompareFunc)encounters_sort_compare_rinks);
+    }
+
+    return NULL;
+}
+
+gchar *encounters_translate(RinksEncounter *encounter)
+{
+    gint32 group[2];
+    gint32 pos[2];
+
+    if (!encounters_encounter_parse_abstract_team(encounter, 1, &group[0], &pos[0]))
+        return NULL;
+    if (!encounters_encounter_parse_abstract_team(encounter, 2, &group[1], &pos[1]))
+        return NULL;
+
+    if (group[0] != group[1])
+        return NULL;
+
+    if (group[0] == 0)
+        return g_strdup_printf("Runde %" G_GINT64_FORMAT ", %d. RL – %d. RL",
+                encounter->round, pos[0], pos[1]);
+    else
+        return g_strdup_printf("Runde %" G_GINT64_FORMAT ", %d. Gr. %c – %d. Gr. %c",
+                encounter->round, pos[0], (gchar)(group[0] - 1 + 'A'),
+                pos[1], (gchar)(group[1] - 1 + 'A'));
+
 }
 
 GList *encounters_filter_group(GList *encounters, gint32 group)

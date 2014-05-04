@@ -49,6 +49,11 @@ void ui_dialog_settings_update_view_cb(gpointer data)
     ui_dialog_settings_write_data();
 }
 
+void ui_dialog_settings_activated_cb(gpointer data)
+{
+    ui_dialog_settings_write_data();
+}
+
 void ui_dialog_settings_destroy_cb(gpointer data)
 {
     g_printf("ui-dialog-settings: destroy\n");
@@ -61,7 +66,8 @@ GtkWidget *ui_dialog_settings_open(gpointer data)
     static UiDialogCallbacks callbacks = {
         .apply_cb = ui_dialog_settings_apply_cb,
         .destroy_cb = ui_dialog_settings_destroy_cb,
-        .update_cb = ui_dialog_settings_update_view_cb
+        .update_cb = ui_dialog_settings_update_view_cb,
+        .activated_cb = ui_dialog_settings_activated_cb
     };
     if (!GTK_IS_WIDGET(ui_dialog_settings)) {
         ui_dialog_settings = ui_dialog_page_new("Einstellungen", &callbacks);

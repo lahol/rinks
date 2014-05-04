@@ -128,7 +128,7 @@ void rounds_map_teams_to_encounters(RinksTournament *tournament, RinksRound *rou
         return;
 
     GList *ts = teams_sort(g_list_copy(teams), RinksTeamSortGroup);
-    GList *es = encounters_sort(g_list_copy(encounters));
+    GList *es = encounters_sort(g_list_copy(encounters), RinksEncounterSortLogical);
     
     /* TODO: do real mapping of abstract teams (e.g. a:2 vs b:3) 
      * for now: a:1 vs a:2, a:3 vs a:4, … expected */
@@ -239,7 +239,7 @@ void rounds_create_games(gint64 round_id, RinksGameOrder order)
 
     GList *teams_filtered = NULL, *teams_sliced = NULL;
 
-    encounters = tournament_get_encounters(tournament, round->id);
+    encounters = tournament_get_encounters(tournament, round->id, 0);
     if (encounters == NULL)
         goto out;
 

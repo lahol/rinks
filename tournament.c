@@ -256,11 +256,18 @@ void tournament_update_encounter(RinksTournament *tournament, RinksEncounter *en
     db_update_encounter(tournament->db_handle, encounter);
 }
 
-GList *tournament_get_encounters(RinksTournament *tournament, gint64 round_id)
+GList *tournament_get_encounters(RinksTournament *tournament, gint64 round_id, gint64 game_id)
 {
     g_return_val_if_fail(tournament != NULL, NULL);
 
-    return db_get_encounters(tournament->db_handle, round_id);
+    return db_get_encounters(tournament->db_handle, round_id, game_id);
+}
+
+RinksEncounter *tournament_get_encounter(RinksTournament *tournament, gint64 encounter_id)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_encounter(tournament->db_handle, encounter_id);
 }
 
 gboolean tournament_existed_encounter_before(RinksTournament *tournament, gint64 round_id,
@@ -269,6 +276,13 @@ gboolean tournament_existed_encounter_before(RinksTournament *tournament, gint64
     g_return_val_if_fail(tournament != NULL, FALSE);
 
     return db_existed_encounter_before(tournament->db_handle, round_id, team1, team2);
+}
+
+void tournament_encounter_set_game(RinksTournament *tournament, gint64 encounter_id, gint64 game_id)
+{
+    g_return_if_fail(tournament != NULL);
+
+    db_encounter_set_game(tournament->db_handle, encounter_id, game_id);
 }
 
 gint64 tournament_add_game(RinksTournament *tournament, RinksGame *game)
@@ -283,6 +297,20 @@ GList *tournament_get_games(RinksTournament *tournament)
     g_return_val_if_fail(tournament != NULL, NULL);
 
     return db_get_games(tournament->db_handle);
+}
+
+RinksGame *tournament_get_game(RinksTournament *tournament, gint64 game_id)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_game(tournament->db_handle, game_id);
+}
+
+void tournament_update_game(RinksTournament *tournament, RinksGame *game)
+{
+    g_return_if_fail(tournament != NULL);
+
+    db_update_game(tournament->db_handle, game);
 }
 
 void tournament_set_result(RinksTournament *tournament, RinksResult *result)

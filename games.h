@@ -14,3 +14,5 @@ typedef struct {
     gint32 sequence;
     gint32 closed;
 } RinksGame;
+
+void game_free(RinksGame *game);
