@@ -63,7 +63,6 @@ void ui_dialog_games_build_tree_model(GList *encounters)
 
 void ui_dialog_games_encounter_widget_set_selection(GtkWidget *widget, gint64 encounter)
 {
-    g_printf("ui-dialog-games: widget set selection\n");
     GtkTreeIter iter;
     gboolean valid = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(ui_dialog_games_encounter_model),
             &iter);
@@ -97,7 +96,6 @@ gint64 ui_dialog_games_encounter_widget_get_selection(GtkWidget *widget)
 
 void ui_dialog_games_create_entry(RinksTournament *tournament, RinksGame *game, gint32 nrinks)
 {
-    g_printf("ui-dialog-games: create entry\n");
     g_return_if_fail(tournament != NULL);
     g_return_if_fail(game != NULL);
 
@@ -301,6 +299,10 @@ void ui_dialog_games_button_add_game_clicked(GtkButton *button, gpointer data)
     game.id = tournament_add_game(tournament, &game);
 
     ui_dialog_games_create_entry(tournament, &game, nrinks);
+
+    UiDialogPageData *pgdata = g_malloc0(sizeof(UiDialogPageData));
+    pgdata->id = game.id;
+    ui_add_page(SIDEBAR_TYPE_RESULTS, game.description, pgdata);
 
     g_free(game.description);
 }

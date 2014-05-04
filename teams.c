@@ -30,6 +30,10 @@ gint teams_sort_compare_all(RinksTeam *a, RinksTeam *b)
         return -1;
     if (a->stones > b->stones)
         return 1;
+    if (a->id < b->id)
+        return -1;
+    if (a->id > b->id)
+        return 1;
     return 0;
 }
 

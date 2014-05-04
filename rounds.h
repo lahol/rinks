@@ -28,4 +28,6 @@ typedef struct {
 void round_free(RinksRound *round);
 
 void rounds_create_encounters(gint64 round_id);
-void rounds_create_games(gint64 round_id, RinksGameOrder order);
+/* void rounds_create_games(gint64 round_id, RinksGameOrder order);*/
+
+void rounds_update_encounters(void);

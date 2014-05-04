@@ -20,6 +20,8 @@ typedef struct {
     gint32 points;
     gint32 ends;
     gint32 stones;
+    gint64 game;
+    gint64 round;
 } RinksResult;
 
 void encounter_free(RinksEncounter *encounter);

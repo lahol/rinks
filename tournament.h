@@ -55,6 +55,6 @@ void tournament_update_game(RinksTournament *tournament, RinksGame *game);
 
 void tournament_set_result(RinksTournament *tournament, RinksResult *result);
 RinksResult *tournament_get_result(RinksTournament *tournament, gint64 encounter, gint64 team);
-GList *tournament_get_team_result(RinksTournament *tournament, gint64 team);
+GList *tournament_get_team_results(RinksTournament *tournament, gint64 team);
 
 void tournament_update_standings(RinksTournament *tournament);

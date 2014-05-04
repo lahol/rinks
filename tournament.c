@@ -327,7 +327,7 @@ RinksResult *tournament_get_result(RinksTournament *tournament, gint64 encounter
     return db_get_result(tournament->db_handle, encounter, team);
 }
 
-GList *tournament_get_team_result(RinksTournament *tournament, gint64 team)
+GList *tournament_get_team_results(RinksTournament *tournament, gint64 team)
 {
     g_return_val_if_fail(tournament != NULL, NULL);
 
@@ -347,7 +347,7 @@ void tournament_update_standings(RinksTournament *tournament)
     GList *results, *r;
     for (tmp = teams; tmp != NULL; tmp = g_list_next(tmp)) {
         team = (RinksTeam *)tmp->data;
-        results = tournament_get_team_result(tournament, team->id);
+        results = tournament_get_team_results(tournament, team->id);
 
         team->points = 0;
         team->ends = 0;

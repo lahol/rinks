@@ -45,6 +45,7 @@ void tournament_changed_cb(RinksTournament *tournament)
 
     ui_data_changed();
     ui_update_view();
+    rounds_update_encounters();
 /*    ui_select_view(VIEW_SETTINGS, NULL);*/
 }
 

@@ -4,7 +4,7 @@
 #include "ui-dialog-teams.h"
 #include "ui-dialog-rounds.h"
 #include "ui-dialog-games.h"
-#include "ui-dialog-round-overview.h"
+#include "ui-dialog-results.h"
 #include "application.h"
 #include "tournament.h"
 
@@ -15,16 +15,6 @@ GtkWidget *main_view_notebook = NULL;
 GtkTreeStore *main_sidebar_tree = NULL;
 
 void (*_menu_callback)(gchar *) = NULL;
-
-enum {
-    SIDEBAR_TYPE_SETTINGS,
-    SIDEBAR_TYPE_TEAMS,
-    SIDEBAR_TYPE_ROUNDS,
-    SIDEBAR_TYPE_GAMES,
-    SIDEBAR_TYPE_ENCOUNTERS,
-    SIDEBAR_TYPE_RESULTS,
-    SIDEBAR_TYPE_ROUND_OVERVIEW
-};
 
 enum {
     SIDEBAR_COLUMN_LABEL,
@@ -230,7 +220,7 @@ gboolean ui_sidebar_get_item(gint type, GtkTreeIter *iter, gpointer data)
     return found;
 }
 
-void ui_add_page(int type, const gchar *title, gpointer data)
+void ui_add_page(UiSidebarEntryType type, const gchar *title, gpointer data)
 {
     GtkWidget *page_widget = NULL;
     gint pagenum = -1;
@@ -250,11 +240,12 @@ void ui_add_page(int type, const gchar *title, gpointer data)
             page_widget = ui_dialog_games_open(data);
             break;
         case SIDEBAR_TYPE_ROUND_OVERVIEW:
-            have_parent_iter = ui_sidebar_get_item(SIDEBAR_TYPE_ROUNDS, &parentiter, NULL);
-            page_widget = ui_dialog_round_overview_open(data);
             break;
         case SIDEBAR_TYPE_ENCOUNTERS:
+            break;
         case SIDEBAR_TYPE_RESULTS:
+            have_parent_iter = ui_sidebar_get_item(SIDEBAR_TYPE_GAMES, &parentiter, NULL);
+            page_widget = ui_dialog_results_open(data);
             break;
     }
 
@@ -504,7 +495,6 @@ void ui_clear_tournament_specific_pages(void)
         g_queue_push_head(&stack, iter);
     } while (gtk_tree_model_iter_next(GTK_TREE_MODEL(main_sidebar_tree), &tmp));
 
-    /* TODO: implement dfs correctly */
     while (!g_queue_is_empty(&stack)) {
         iter = g_queue_pop_head(&stack);
         
@@ -541,18 +531,18 @@ void ui_create_tournament_specific_pages(void)
     if (tournament == NULL)
         return;
 
-    GList *rounds = tournament_get_rounds(tournament);
+    GList *games = tournament_get_games(tournament);
 
     GList *tmp;
     UiDialogPageData *pgdata;
-/*    for (tmp = rounds; tmp != NULL; tmp = g_list_next(tmp)) {
+    for (tmp = games; tmp != NULL; tmp = g_list_next(tmp)) {
         pgdata = g_malloc0(sizeof(UiDialogPageData));
-        pgdata->id = ((RinksRound *)tmp->data)->id;
+        pgdata->id = ((RinksGame *)tmp->data)->id;
 
-        ui_add_page(SIDEBAR_TYPE_ROUND_OVERVIEW, ((RinksRound *)tmp->data)->description, pgdata);
-    }*/
+        ui_add_page(SIDEBAR_TYPE_RESULTS, ((RinksGame *)tmp->data)->description, pgdata);
+    }
 
-    g_list_free_full(rounds, (GDestroyNotify)round_free);
+    g_list_free_full(games, (GDestroyNotify)game_free);
 }
 
 void ui_data_changed(void)

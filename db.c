@@ -860,7 +860,7 @@ RinksResult *db_get_result(gpointer db_handle, gint64 encounter, gint64 team)
 
     int col_count, col;
 
-    gchar *sql = sqlite3_mprintf("select * from results where encounter=%" G_GINT64_FORMAT " and team=%" G_GINT64_FORMAT,
+    gchar *sql = sqlite3_mprintf("select results.*, encounters.round, encounters.game from results left outer join encounters on results.encounter=encounters.id where encounter=%" G_GINT64_FORMAT " and team=%" G_GINT64_FORMAT ,
             encounter, team);
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     sqlite3_free(sql);
@@ -882,6 +882,8 @@ RinksResult *db_get_result(gpointer db_handle, gint64 encounter, gint64 team)
         DBGETVAL("points", G_TYPE_INT, result->points);
         DBGETVAL("ends", G_TYPE_INT, result->ends);
         DBGETVAL("stones", G_TYPE_INT, result->stones);
+        DBGETVAL("round", G_TYPE_INT64, result->round);
+        DBGETVAL("game", G_TYPE_INT64, result->game);
 #undef DBGETVAL
     }
 
@@ -902,7 +904,14 @@ GList *db_get_team_results(gpointer db_handle, gint64 team)
 
     int col_count, col;
 
-    gchar *sql = sqlite3_mprintf("select * from results where team=%" G_GINT64_FORMAT " order by encounter desc", team);
+    gchar *sql;
+   
+    if (team > 0)
+        sql = sqlite3_mprintf("select results.*, encounters.round, encounters.game from results \
+left outer join encounters on results.encounter=encounters.id where team=%" G_GINT64_FORMAT " order by encounter desc", team);
+    else
+        sql = sqlite3_mprintf("select results.*, encounters.round, encounters.game from results left outer join encounters on \
+results.encounter=encounters.id order by encounter desc");
 
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     sqlite3_free(sql);
@@ -922,6 +931,8 @@ GList *db_get_team_results(gpointer db_handle, gint64 team)
         DBGETVAL("points", G_TYPE_INT, res->points);
         DBGETVAL("ends", G_TYPE_INT, res->ends);
         DBGETVAL("stones", G_TYPE_INT, res->stones);
+        DBGETVAL("round", G_TYPE_INT64, res->round);
+        DBGETVAL("game", G_TYPE_INT64, res->game);
 #undef DBGETVAL
         }
 
