@@ -1,4 +1,5 @@
 #include "teams.h"
+#include <glib/gprintf.h>
 
 void team_free(RinksTeam *team)
 {
@@ -13,23 +14,23 @@ gint teams_sort_compare_all(RinksTeam *a, RinksTeam *b)
 {
     if (a == NULL && b == NULL)
         return 0;
-    if (a == NULL);
+    if (a == NULL)
         return -1;
     if (b == NULL)
         return 1;
 
     if (a->points < b->points)
-        return -1;
+        return 1;
     if (a->points > b->points)
-        return 1;
+        return -1;
     if (a->ends < b->ends)
-        return -1;
+        return 1;
     if (a->ends > b->ends)
-        return 1;
-    if (a->stones < b->stones)
         return -1;
-    if (a->stones > b->stones)
+    if (a->stones < b->stones)
         return 1;
+    if (a->stones > b->stones)
+        return -1;
     if (a->id < b->id)
         return -1;
     if (a->id > b->id)
@@ -41,7 +42,7 @@ gint teams_sort_compare_group(RinksTeam *a, RinksTeam *b)
 {
     if (a == NULL && b == NULL)
         return 0;
-    if (a == NULL);
+    if (a == NULL)
         return -1;
     if (b == NULL)
         return 1;

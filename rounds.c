@@ -306,9 +306,14 @@ gboolean rounds_existed_encounter_before(GList *encounters, gint64 team1, gint64
     comp.real_team1 = team1;
     comp.real_team2 = team2;
     comp.round = current_round;
-    if (g_list_find_custom(encounters, &comp, (GCompareFunc)rounds_compare_encounter_before) != NULL)
+    g_printf("encounter %" G_GINT64_FORMAT " vs %" G_GINT64_FORMAT " existed before %" G_GINT64_FORMAT,
+            team1, team2, current_round);
+    if (g_list_find_custom(encounters, &comp, (GCompareFunc)rounds_compare_encounter_before) != NULL) {
+        g_printf(" TRUE\n");
         return TRUE;
+    }
 
+    g_printf(" FALSE\n");
     return FALSE;
 }
 
@@ -326,7 +331,7 @@ void rounds_get_standings_before_round(GList *teams, GList *results, gint64 roun
         team->stones = 0;
         for (r = results; r != NULL; r = g_list_next(r)) {
             result = (RinksResult *)r->data;
-            if (result->id < round_id && result->team == team->id) {
+            if (result->round < round_id && result->team == team->id) {
                 team->points += result->points;
                 team->ends += result->ends;
                 team->stones += result->stones;
@@ -362,6 +367,11 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
 
     for (i = 0, tmp = map_teams; tmp != NULL && i < nteams; ++i, tmp = g_list_next(tmp)) {
         teams[i] = ((RinksTeam *)tmp->data)->id;
+        g_printf("rd %" G_GINT64_FORMAT " team %" G_GINT64_FORMAT ": %d %d %d\n",
+                round->id, ((RinksTeam *)tmp->data)->id,
+                ((RinksTeam *)tmp->data)->points,
+                ((RinksTeam *)tmp->data)->ends,
+                ((RinksTeam *)tmp->data)->stones);
     }
 /*    for (i = 0, tmp = map_encounters; tmp != NULL && i < nencounters; ++i, tmp = g_list_next(tmp)) {
         encounters_encounter_parse_abstract_team(((RinksEncounter *)tmp->data), 1, NULL, &pos);
@@ -386,11 +396,13 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
                 ++j;
             }
             if (i + j == nteams) {
+                g_printf("conflict for pos %d\n", i);
                 conflict = TRUE;
                 break;
             }
             else {
-                util_array_move_element(teams, i + 1, i + j);
+                g_printf("move %d to %d\n", i + 1, i + j);
+                util_array_move_element(teams, i + j, i + 1);
             }
         }
         g_printf("\nbefore second pass\n");
@@ -407,7 +419,7 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
                 g_printf("\nerror: could not find matching\n");
             }
             else {
-                util_array_move_element(teams, i - 1, i - j);
+                util_array_move_element(teams, i - j, i - 1);
             }
             if (i == 1)
                 break;
@@ -419,11 +431,40 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
     }
 
     /* write encounters back */
+    GList *tmp_global = all_encounters;
+    GList *search_start;
+    gboolean found_global;
     for (i = 0, tmp = map_encounters; tmp != NULL && i < nteams; i += 2, tmp = g_list_next(tmp)) {
+        /* TODO: check if this works correctly */
         ((RinksEncounter *)tmp->data)->real_team1 = teams[i];
         ((RinksEncounter *)tmp->data)->real_team2 = teams[i + 1];
 
-        tournament_update_encounter(tournament, (RinksEncounter *)tmp->data);
+        search_start = tmp_global;
+        found_global = FALSE;
+        while (tmp_global) {
+            if (((RinksEncounter *)tmp_global->data)->id == ((RinksEncounter *)tmp->data)->id) {
+                found_global = TRUE;
+                break;
+            }
+            tmp_global = g_list_next(tmp_global);
+        }
+        if (tmp_global == NULL) {
+            tmp_global = all_encounters;
+            while (!found_global && tmp_global && tmp_global != search_start) {
+                if (((RinksEncounter *)tmp_global->data)->id == ((RinksEncounter *)tmp->data)->id) {
+                    found_global = TRUE;
+                    break;
+                }
+                tmp_global = g_list_next(tmp_global);
+            }
+        }
+        if (found_global) {
+            g_printf("encounter %d found global\n", i/2);
+            ((RinksEncounter *)tmp_global->data)->real_team1 = teams[i];
+            ((RinksEncounter *)tmp_global->data)->real_team2 = teams[i + 1];
+        }
+        else
+            g_printf("encounter %d did not find global\n", i/2);
     }
 }
 
@@ -486,7 +527,13 @@ void rounds_update_encounters(void)
         g_list_free_full(encounters_round, (GDestroyNotify)encounter_free);
     }
 
+    GList *tmp;
+    for (tmp = encounters_all; tmp != NULL; tmp = g_list_next(tmp)) {
+        tournament_update_encounter(tournament, ((RinksEncounter *)tmp->data));
+    }
+
     g_list_free_full(teams, (GDestroyNotify)team_free);
     g_list_free_full(results, g_free);
     g_list_free_full(rounds, (GDestroyNotify)round_free);
+    g_list_free_full(encounters_all, (GDestroyNotify)encounter_free);
 }
