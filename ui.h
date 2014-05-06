@@ -43,7 +43,8 @@ typedef enum {
     SIDEBAR_TYPE_GAMES,
     SIDEBAR_TYPE_ENCOUNTERS,
     SIDEBAR_TYPE_RESULTS,
-    SIDEBAR_TYPE_ROUND_OVERVIEW
+    SIDEBAR_TYPE_ROUND_OVERVIEW,
+    SIDEBAR_TYPE_OVERVIEW
 } UiSidebarEntryType;
 
 void ui_select_view(UiViewType type, gpointer data);
