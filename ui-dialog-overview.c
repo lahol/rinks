@@ -123,6 +123,7 @@ void ui_dialog_overview_destroy_cb(gpointer data)
 void ui_dialog_overview_button_print_clicked(GtkButton *button, gpointer data)
 {
     g_printf("ui-dialog-overview: output button clicked\n");
+    output_print(application_get_current_tournament(), "test.pdf");
 }
 
 GtkWidget *ui_dialog_overview_open(gpointer data)

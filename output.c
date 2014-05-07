@@ -1,5 +1,10 @@
 #include "output.h"
 #include <glib/gprintf.h>
+#include <pango/pangocairo.h>
+#include <cairo.h>
+#include <cairo-pdf.h>
+
+#define CAIRO_MM_PTS   (3.53)
 
 typedef struct {
     RinksOutputType type;
@@ -10,18 +15,55 @@ GList *output_data = NULL;
 
 void output_init(void)
 {
+    output_clear();
 }
 
 void output_clear(void)
 {
+    g_list_free_full(output_data, g_free);
+    output_data = NULL;
 }
 
 void output_add(RinksOutputType type, gint64 data)
 {
+    RinksOutputData *entry = g_malloc0(sizeof(RinksOutputData));
+    entry->type = type;
+    entry->data = data;
+
+    output_data = g_list_prepend(output_data, entry);
 }
 
 gboolean output_print(RinksTournament *tournament, const gchar *filename)
 {
+    cairo_t *cr;
+    cairo_surface_t *surface;
+
+    surface = cairo_pdf_surface_create(filename, CAIRO_MM_PTS * 210.0, CAIRO_MM_PTS * 297.0);
+    cr = cairo_create(surface);
+    
+    /* render text */
+    PangoLayout *layout;
+    PangoFontDescription *desc;
+
+    cairo_translate(cr, 10, 20);
+    layout = pango_cairo_create_layout(cr);
+
+    gchar *title = tournament_get_property(tournament, "tournament.description");
+    pango_layout_set_text(layout, title, -1);
+    desc = pango_font_description_from_string("Sans Bold 24");
+    g_free(title);
+    pango_layout_set_font_description(layout, desc);
+    pango_font_description_free(desc);
+
+    cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+    pango_cairo_update_layout(cr, layout);
+    pango_cairo_show_layout(cr, layout);
+
+    g_object_unref(layout);
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+
     return TRUE;
 }
 
