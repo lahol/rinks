@@ -1,0 +1,16 @@
+#pragma once
+
+#include <gtk/gtk.h>
+#include "encounters.h"
+#include "teams.h"
+
+typedef enum {
+    UiHelperModelTypeEncounters,
+    UiHelperModelTypeTeams,
+} UiHelperModelType;
+
+GtkWidget *ui_helper_combo_widget_build(GtkTreeModel *model);
+void ui_helper_clear_tree_model(GtkTreeModel *model);
+void ui_helper_build_combo_tree_model(GtkTreeModel **model, UiHelperModelType type, GList *encounters);
+void ui_helper_combo_widget_set_selection(GtkWidget *widget, gint64 encounter);
+gint64 ui_helper_combo_widget_get_selection(GtkWidget *widget);

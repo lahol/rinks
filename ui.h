@@ -44,7 +44,8 @@ typedef enum {
     SIDEBAR_TYPE_ENCOUNTERS,
     SIDEBAR_TYPE_RESULTS,
     SIDEBAR_TYPE_ROUND_OVERVIEW,
-    SIDEBAR_TYPE_OVERVIEW
+    SIDEBAR_TYPE_OVERVIEW,
+    SIDEBAR_TYPE_OVERRIDES
 } UiSidebarEntryType;
 
 void ui_select_view(UiViewType type, gpointer data);

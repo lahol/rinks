@@ -115,6 +115,11 @@ void ui_dialog_overview_activate_cb(gpointer data)
     ui_dialog_overview_rebuild_entries();
 }
 
+void ui_dialog_overview_destroy_cb(gpointer data)
+{
+    ui_dialog_overview_clear_entries();
+}
+
 void ui_dialog_overview_button_print_clicked(GtkButton *button, gpointer data)
 {
     g_printf("ui-dialog-overview: output button clicked\n");
@@ -123,7 +128,8 @@ void ui_dialog_overview_button_print_clicked(GtkButton *button, gpointer data)
 GtkWidget *ui_dialog_overview_open(gpointer data)
 {
     static UiDialogCallbacks callbacks = {
-        .activated_cb = ui_dialog_overview_activate_cb
+        .activated_cb = ui_dialog_overview_activate_cb,
+        .destroy_cb = ui_dialog_overview_destroy_cb
     };
 
     GtkWidget *button;

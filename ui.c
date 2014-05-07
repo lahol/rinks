@@ -6,6 +6,7 @@
 #include "ui-dialog-games.h"
 #include "ui-dialog-results.h"
 #include "ui-dialog-overview.h"
+#include "ui-dialog-overrides.h"
 #include "application.h"
 #include "tournament.h"
 
@@ -245,6 +246,9 @@ void ui_add_page(UiSidebarEntryType type, const gchar *title, gpointer data)
         case SIDEBAR_TYPE_OVERVIEW:
             page_widget = ui_dialog_overview_open(data);
             break;
+        case SIDEBAR_TYPE_OVERRIDES:
+            page_widget = ui_dialog_overrides_open(data);
+            break;
         case SIDEBAR_TYPE_ENCOUNTERS:
             break;
         case SIDEBAR_TYPE_RESULTS:
@@ -326,6 +330,7 @@ GtkWidget *ui_create_main_view(void)
     ui_add_page(SIDEBAR_TYPE_ROUNDS, "Runden", NULL);
     ui_add_page(SIDEBAR_TYPE_GAMES, "Spiele", NULL);
     ui_add_page(SIDEBAR_TYPE_OVERVIEW, "Übersicht", NULL);
+    ui_add_page(SIDEBAR_TYPE_OVERRIDES, "Korrekturen", NULL);
 
     return scroll;
 }

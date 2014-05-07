@@ -2,6 +2,7 @@
 
 #include "ui-dialog-games.h"
 #include "ui.h"
+#include "ui-helpers.h"
 
 #include "tournament.h"
 #include "teams.h"
@@ -25,73 +26,15 @@ gboolean ui_dialog_games_encounter_model_built = FALSE;
 
 void ui_dialog_games_clear_tree_model(void)
 {
-    g_printf("ui-dialog-games: clear tree model\n");
-    if (ui_dialog_games_encounter_model != NULL) {
-        gtk_list_store_clear(GTK_LIST_STORE(ui_dialog_games_encounter_model));
-        ui_dialog_games_encounter_model_built = FALSE;
-    }
+    ui_helper_clear_tree_model(ui_dialog_games_encounter_model);
+    ui_dialog_games_encounter_model_built = FALSE;
 }
 
 void ui_dialog_games_build_tree_model(GList *encounters)
 {
     g_printf("ui-dialog-games: build tree model\n");
-    if (ui_dialog_games_encounter_model == NULL) {
-        ui_dialog_games_encounter_model = GTK_TREE_MODEL(gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_INT64));
-    }
-    GList *tmp;
-    GtkTreeIter iter;
-    gchar *text;
-
-    gtk_list_store_append(GTK_LIST_STORE(ui_dialog_games_encounter_model), &iter);
-    gtk_list_store_set(GTK_LIST_STORE(ui_dialog_games_encounter_model), &iter,
-            0, "-- Begegnung auswählen --",
-            1, 0,
-            -1);
-
-    for (tmp = encounters; tmp != NULL; tmp = g_list_next(tmp)) {
-        text = encounters_translate((RinksEncounter *)tmp->data);
-        gtk_list_store_append(GTK_LIST_STORE(ui_dialog_games_encounter_model), &iter);
-        gtk_list_store_set(GTK_LIST_STORE(ui_dialog_games_encounter_model), &iter,
-                0, text,
-                1, ((RinksEncounter *)tmp->data)->id,
-                -1);
-        g_free(text);
-    }
-
+    ui_helper_build_combo_tree_model(&ui_dialog_games_encounter_model, UiHelperModelTypeEncounters, encounters);
     ui_dialog_games_encounter_model_built = TRUE;
-}
-
-void ui_dialog_games_encounter_widget_set_selection(GtkWidget *widget, gint64 encounter)
-{
-    GtkTreeIter iter;
-    gboolean valid = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(ui_dialog_games_encounter_model),
-            &iter);
-
-    gint64 id;
-    while (valid) {
-        gtk_tree_model_get(GTK_TREE_MODEL(ui_dialog_games_encounter_model), &iter, 1, &id, -1);
-
-        if (id == encounter) {
-            gtk_combo_box_set_active_iter(GTK_COMBO_BOX(widget), &iter);
-            break;
-        }
-
-        valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(ui_dialog_games_encounter_model), &iter);
-    }
-}
-
-gint64 ui_dialog_games_encounter_widget_get_selection(GtkWidget *widget)
-{
-    g_printf("ui-dialog-games: widget get selection\n");
-    GtkTreeIter iter;
-
-    if (!gtk_combo_box_get_active_iter(GTK_COMBO_BOX(widget), &iter))
-        return -1;
-
-    gint64 id;
-    gtk_tree_model_get(GTK_TREE_MODEL(ui_dialog_games_encounter_model), &iter, 1, &id, -1);
-
-    return id;
 }
 
 void ui_dialog_games_create_entry(RinksTournament *tournament, RinksGame *game, gint32 nrinks)
@@ -131,8 +74,6 @@ void ui_dialog_games_create_entry(RinksTournament *tournament, RinksGame *game, 
         g_list_free_full(all_encounters, (GDestroyNotify)encounter_free);
     }
 
-    GtkCellRenderer *renderer = gtk_cell_renderer_text_new();
-
     for (i = 0; i < nrinks; ++i) {
         text = g_strdup_printf("Rink %c:", (gchar)(i + 'A'));
         label = gtk_label_new(text);
@@ -140,9 +81,7 @@ void ui_dialog_games_create_entry(RinksTournament *tournament, RinksGame *game, 
 
         gtk_table_attach(GTK_TABLE(table), label, 0, 1, i + 1, i + 2, 0, 0, 2, 2);
 
-        entry->encounters[i] = gtk_combo_box_new_with_model(GTK_TREE_MODEL(ui_dialog_games_encounter_model));
-        gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(entry->encounters[i]), renderer, TRUE);
-        gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(entry->encounters[i]), renderer, "text", 0);
+        entry->encounters[i] = ui_helper_combo_widget_build(GTK_TREE_MODEL(ui_dialog_games_encounter_model));
 
         gtk_table_attach(GTK_TABLE(table), entry->encounters[i], 1, 2, i + 1, i + 2, GTK_EXPAND | GTK_FILL, 0, 2, 2);
     }
@@ -157,7 +96,7 @@ void ui_dialog_games_create_entry(RinksTournament *tournament, RinksGame *game, 
             continue;
         }
 
-        ui_dialog_games_encounter_widget_set_selection(entry->encounters[encounter->rink - 1], encounter->id);
+        ui_helper_combo_widget_set_selection(entry->encounters[encounter->rink - 1], encounter->id);
     }
 
     g_list_free_full(encounters, (GDestroyNotify)encounter_free);
@@ -250,7 +189,7 @@ void ui_dialog_games_apply_cb(gpointer data)
 
         for (i = 0; i < ((struct UiDialogGamesEntry *)tmp->data)->nencounters; ++i) {
             g_printf("i: %d\n", i);
-            enc_id = ui_dialog_games_encounter_widget_get_selection(((struct UiDialogGamesEntry *)tmp->data)->encounters[i]);
+            enc_id = ui_helper_combo_widget_get_selection(((struct UiDialogGamesEntry *)tmp->data)->encounters[i]);
             if (enc_id > 0 &&
                     (encounter = tournament_get_encounter(tournament, enc_id)) != NULL) {
                 encounter->game = ((struct UiDialogGamesEntry *)tmp->data)->game_id;

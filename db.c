@@ -66,7 +66,7 @@ gpointer db_init_database(gchar *path, gboolean clear)
         ends integer,\
         stones integer)");
 
-    CREATE_TABLE("encounters", "(id integer primary key,\
+    CREATE_TABLE("overrides", "(id integer primary key,\
         encounter integer,\
         team1 integer,\
         team2 integer)");
@@ -954,8 +954,6 @@ gint64 db_add_override(gpointer db_handle, RinksOverride *override)
 {
     g_return_val_if_fail(db_handle != NULL, -1);
     g_return_val_if_fail(override != NULL, -1);
-    if (override->encounter <= 0 || override->team1 <= 0 || override->team2 <= 0)
-        return -1;
 
     int rc;
 
@@ -1001,7 +999,7 @@ GList *db_get_overrides(gpointer db_handle)
 
     int col_count, col;
 
-    char *sql = "select * from overrides order by id desc";
+    char *sql = "select overrides.*, encounters.round from overrides left outer join encounters on overrides.encounter=encounters.id order by id desc";
 
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     
@@ -1018,6 +1016,7 @@ GList *db_get_overrides(gpointer db_handle)
             DBGETVAL("encounter", G_TYPE_INT64, override->encounter);
             DBGETVAL("team1", G_TYPE_INT64, override->team1);
             DBGETVAL("team2", G_TYPE_INT64, override->team2);
+            DBGETVAL("round", G_TYPE_INT64, override->round);
 #undef DBGETVAL
         }
 

@@ -27,6 +27,7 @@ typedef struct {
 typedef struct {
     gint64 id;
     gint64 encounter;
+    gint64 round;
     gint64 team1;
     gint64 team2;
 } RinksOverride;

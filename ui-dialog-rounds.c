@@ -3,8 +3,6 @@
 #include "ui-dialog-rounds.h"
 #include "ui.h"
 
-#include "data.h"
-
 #include "tournament.h"
 #include "teams.h"
 #include "rounds.h"
@@ -83,9 +81,6 @@ void ui_dialog_rounds_data_changed_cb(gpointer data)
 
 void ui_dialog_rounds_button_add_round_clicked(GtkButton *button, gpointer data)
 {
-    /* TODO: do not call callback directly */
-    ui_dialog_rounds_apply_cb(NULL);
-
     RinksTournament *tournament = application_get_current_tournament();
     gint nteams = tournament_get_team_count(tournament);
     RinksRound *round = g_malloc0(sizeof(RinksRound));
@@ -118,6 +113,9 @@ void ui_dialog_rounds_button_add_round_clicked(GtkButton *button, gpointer data)
 void ui_dialog_rounds_button_create_encounters_clicked(GtkButton *button, struct UiDialogRoundsEntry *entry)
 {
     g_return_if_fail(entry != NULL);
+
+    /* TODO: do not call callback directly */
+    ui_dialog_rounds_apply_cb(NULL);
 
     g_printf("create games for round %" G_GINT64_FORMAT "\n", entry->round_id);
 
