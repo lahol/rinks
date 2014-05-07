@@ -66,6 +66,11 @@ gpointer db_init_database(gchar *path, gboolean clear)
         ends integer,\
         stones integer)");
 
+    CREATE_TABLE("encounters", "(id integer primary key,\
+        encounter integer,\
+        team1 integer,\
+        team2 integer)");
+
 #undef STMT_EXEC
 
     return db_handle;
@@ -939,6 +944,85 @@ results.encounter=encounters.id order by encounter desc");
         result = g_list_prepend(result, res);
     }
 
+out:
+    if (stmt != NULL)
+        sqlite3_finalize(stmt);
+    return result;
+}
+
+gint64 db_add_override(gpointer db_handle, RinksOverride *override)
+{
+    g_return_val_if_fail(db_handle != NULL, -1);
+    g_return_val_if_fail(override != NULL, -1);
+    if (override->encounter <= 0 || override->team1 <= 0 || override->team2 <= 0)
+        return -1;
+
+    int rc;
+
+    gchar *sql = sqlite3_mprintf("insert into overrides (encounter,team1,team2) values (%"\
+G_GINT64_FORMAT ", %" G_GINT64_FORMAT ", %" G_GINT64_FORMAT ")",
+            override->encounter, override->team1, override->team2);
+
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    return sqlite3_last_insert_rowid(db_handle);
+}
+
+void db_update_override(gpointer db_handle, RinksOverride *override)
+{
+    g_return_if_fail(db_handle != NULL);
+    g_return_if_fail(override != NULL);
+
+    int rc;
+    gchar *sql = sqlite3_mprintf("update overrides set encounter=%" G_GINT64_FORMAT ", team1=%" G_GINT64_FORMAT\
+", team2=%" G_GINT64_FORMAT " where id=%" G_GINT64_FORMAT,
+            override->encounter, override->team1, override->team2, override->id);
+
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK)
+        return;
+}
+
+GList *db_get_overrides(gpointer db_handle)
+{
+    g_return_val_if_fail(db_handle != NULL, NULL);
+
+    GList *result = NULL;
+    int rc;
+    sqlite3_stmt *stmt = NULL;
+    RinksOverride *override;
+
+    int col_count, col;
+
+    char *sql = "select * from overrides order by id desc";
+
+    rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
+    
+    if (rc != SQLITE_OK)
+        goto out;
+
+    col_count = sqlite3_column_count(stmt);
+
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        override = g_malloc0(sizeof(RinksOverride));
+        for (col = 0; col < col_count; ++col) {
+#define DBGETVAL(name, type, val) if (db_sql_extract_value(stmt, col, (name), (type), &(val))) continue
+            DBGETVAL("id", G_TYPE_INT64, override->id);
+            DBGETVAL("encounter", G_TYPE_INT64, override->encounter);
+            DBGETVAL("team1", G_TYPE_INT64, override->team1);
+            DBGETVAL("team2", G_TYPE_INT64, override->team2);
+#undef DBGETVAL
+        }
+
+        result = g_list_prepend(result, override);
+    }
 out:
     if (stmt != NULL)
         sqlite3_finalize(stmt);

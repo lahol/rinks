@@ -42,3 +42,7 @@ void db_update_game(gpointer db_handle, RinksGame *game);
 void db_set_result(gpointer db_handle, RinksResult *result);
 RinksResult *db_get_result(gpointer db_handle, gint64 encounter, gint64 team);
 GList *db_get_team_results(gpointer db_handle, gint64 team);
+
+gint64 db_add_override(gpointer db_handle, RinksOverride *override);
+void db_update_override(gpointer db_handle, RinksOverride *override);
+GList *db_get_overrides(gpointer db_handle);

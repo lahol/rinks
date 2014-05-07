@@ -57,4 +57,8 @@ void tournament_set_result(RinksTournament *tournament, RinksResult *result);
 RinksResult *tournament_get_result(RinksTournament *tournament, gint64 encounter, gint64 team);
 GList *tournament_get_team_results(RinksTournament *tournament, gint64 team);
 
+gint64 tournament_add_override(RinksTournament *tournament, RinksOverride *override);
+void tournament_update_override(RinksTournament *tournament, RinksOverride *override);
+GList *tournament_get_overrides(RinksTournament *tournament);
+
 void tournament_update_standings(RinksTournament *tournament);

@@ -24,6 +24,13 @@ typedef struct {
     gint64 round;
 } RinksResult;
 
+typedef struct {
+    gint64 id;
+    gint64 encounter;
+    gint64 team1;
+    gint64 team2;
+} RinksOverride;
+
 void encounter_free(RinksEncounter *encounter);
 
 typedef enum {

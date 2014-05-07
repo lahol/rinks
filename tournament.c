@@ -334,6 +334,27 @@ GList *tournament_get_team_results(RinksTournament *tournament, gint64 team)
     return db_get_team_results(tournament->db_handle, team);
 }
 
+gint64 tournament_add_override(RinksTournament *tournament, RinksOverride *override)
+{
+    g_return_val_if_fail(tournament != NULL, -1);
+
+    return db_add_override(tournament->db_handle, override);
+}
+
+void tournament_update_override(RinksTournament *tournament, RinksOverride *override)
+{
+    g_return_if_fail(tournament != NULL);
+
+    return db_update_override(tournament->db_handle, override);
+}
+
+GList *tournament_get_overrides(RinksTournament *tournament)
+{
+    g_return_val_if_fail(tournament != NULL, NULL);
+
+    return db_get_overrides(tournament->db_handle);
+}
+
 void tournament_update_standings(RinksTournament *tournament)
 {
     g_return_if_fail(tournament != NULL);
