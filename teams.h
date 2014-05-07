@@ -31,6 +31,8 @@ typedef enum {
 
 GList *teams_sort(GList *list, RinksTeamSortMode mode);
 
+gint teams_compare_standings(RinksTeam *a, RinksTeam *b);
+
 typedef enum {
     RinksTeamFilterTypeGroup
 } RinksTeamFilterType;

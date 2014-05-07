@@ -83,6 +83,9 @@ void ui_dialog_rounds_data_changed_cb(gpointer data)
 
 void ui_dialog_rounds_button_add_round_clicked(GtkButton *button, gpointer data)
 {
+    /* TODO: do not call callback directly */
+    ui_dialog_rounds_apply_cb(NULL);
+
     RinksTournament *tournament = application_get_current_tournament();
     gint nteams = tournament_get_team_count(tournament);
     RinksRound *round = g_malloc0(sizeof(RinksRound));

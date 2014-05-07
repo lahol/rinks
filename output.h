@@ -15,4 +15,4 @@ void output_add(RinksOutputType type, gint64 data);
 gboolean output_print(RinksTournament *tournament, const gchar *filename);
 
 /* prefectched: if not NULL contains data which would be retrieved for this type */
-gchar *output_format(RinksTournament *tournament, RinksOutputType type, gint64 data, gpointer prefetched);
+gchar *output_format_plain(RinksTournament *tournament, RinksOutputType type, gint64 data, gpointer prefetched);

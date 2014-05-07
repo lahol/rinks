@@ -64,7 +64,7 @@ void ui_dialog_overview_create_entry(RinksTournament *tournament, RinksOutputTyp
     gtk_widget_set_size_request(entry->output, 200, 200);
     gtk_box_pack_start(GTK_BOX(ui_dialog_overview), entry->output, FALSE, FALSE, 3);
 
-    gchar *content = output_format(tournament, entry->output_type, entry->output_data, entry_data);
+    gchar *content = output_format_plain(tournament, entry->output_type, entry->output_data, entry_data);
     
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(entry->output));
     gtk_text_buffer_set_text(GTK_TEXT_BUFFER(buffer), content, -1);
@@ -111,6 +111,7 @@ void ui_dialog_overview_rebuild_entries(void)
 void ui_dialog_overview_activate_cb(gpointer data)
 {
     g_printf("ui-dialog-overview: activate\n");
+    tournament_update_standings(application_get_current_tournament());
     ui_dialog_overview_rebuild_entries();
 }
 

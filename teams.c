@@ -10,7 +10,7 @@ void team_free(RinksTeam *team)
     g_free(team->skip);
 }
 
-gint teams_sort_compare_all(RinksTeam *a, RinksTeam *b)
+gint teams_compare_standings(RinksTeam *a, RinksTeam *b)
 {
     if (a == NULL && b == NULL)
         return 0;
@@ -31,6 +31,21 @@ gint teams_sort_compare_all(RinksTeam *a, RinksTeam *b)
         return 1;
     if (a->stones > b->stones)
         return -1;
+    return 0;
+}
+
+gint teams_sort_compare_all(RinksTeam *a, RinksTeam *b)
+{
+    if (a == NULL && b == NULL)
+        return 0;
+    if (a == NULL)
+        return -1;
+    if (b == NULL)
+        return 1;
+
+    gint standing = teams_compare_standings(a, b);
+    if (standing != 0)
+        return standing;
     if (a->id < b->id)
         return -1;
     if (a->id > b->id)
