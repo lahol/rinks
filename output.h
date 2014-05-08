@@ -5,6 +5,7 @@
 
 typedef enum {
     RinksOutputTypeGameEncounter, /* encounters of game in data */
+    RinksOutputTypeRoundEncounter, 
     RinksOutputTypeRanking,
     RinksOutputTypeRankingGroup
 } RinksOutputType;

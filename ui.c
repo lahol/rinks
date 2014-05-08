@@ -329,8 +329,8 @@ GtkWidget *ui_create_main_view(void)
     ui_add_page(SIDEBAR_TYPE_TEAMS, "Teams", NULL);
     ui_add_page(SIDEBAR_TYPE_ROUNDS, "Runden", NULL);
     ui_add_page(SIDEBAR_TYPE_GAMES, "Spiele", NULL);
-    ui_add_page(SIDEBAR_TYPE_OVERVIEW, "Übersicht", NULL);
     ui_add_page(SIDEBAR_TYPE_OVERRIDES, "Korrekturen", NULL);
+    ui_add_page(SIDEBAR_TYPE_OVERVIEW, "Übersicht", NULL);
 
     return scroll;
 }

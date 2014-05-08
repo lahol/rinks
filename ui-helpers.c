@@ -58,6 +58,12 @@ void ui_helper_build_combo_tree_model(GtkTreeModel **model, UiHelperModelType ty
                         1, ((RinksTeam *)tmp->data)->id,
                         -1);
                 break;
+            case UiHelperModelTypeRound:
+                gtk_list_store_set(GTK_LIST_STORE(*model), &iter,
+                        0, ((RinksRound *)tmp->data)->description,
+                        1, ((RinksRound *)tmp->data)->id,
+                        -1);
+                break;
         }
     }
 }

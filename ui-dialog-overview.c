@@ -55,6 +55,12 @@ void ui_dialog_overview_create_entry(RinksTournament *tournament, RinksOutputTyp
                 entry->output_data = ((RinksGame *)entry_data)->id;
             }
             break;
+        case RinksOutputTypeRoundEncounter:
+            if (entry_data) {
+                label = ((RinksRound *)entry_data)->description;
+                entry->output_data = ((RinksRound *)entry_data)->id;
+            }
+            break;
     }
 
     entry->checkbox = gtk_check_button_new_with_label(label);
@@ -79,9 +85,16 @@ void ui_dialog_overview_create_entries(void)
 
     GList *games = tournament_get_games(tournament);
     GList *teams = tournament_get_teams(tournament);
+  /*  GList *rounds = tournament_get_rounds(tournament);*/
     gint32 ngroups = tournament_get_group_count(tournament);
 
+
     GList *tmp;
+
+/*    for (tmp = rounds; tmp != NULL; tmp = g_list_next(tmp)) {
+        ui_dialog_overview_create_entry(tournament, RinksOutputTypeRoundEncounter, tmp->data);
+    }*/
+
     for (tmp = games; tmp != NULL; tmp = g_list_next(tmp)) {
         ui_dialog_overview_create_entry(tournament, RinksOutputTypeGameEncounter, tmp->data);
     }
@@ -98,6 +111,7 @@ void ui_dialog_overview_create_entries(void)
 
     g_list_free_full(games, (GDestroyNotify)game_free);
     g_list_free_full(teams, (GDestroyNotify)team_free);
+/*    g_list_free_full(rounds, (GDestroyNotify)round_free);*/
 
     gtk_widget_show_all(ui_dialog_overview);
 }
@@ -123,6 +137,19 @@ void ui_dialog_overview_destroy_cb(gpointer data)
 void ui_dialog_overview_button_print_clicked(GtkButton *button, gpointer data)
 {
     g_printf("ui-dialog-overview: output button clicked\n");
+
+    output_init();
+
+    GList *tmp;
+
+    for (tmp = ui_dialog_overview_entries; tmp != NULL; tmp = g_list_next(tmp)) {
+        if (gtk_toggle_button_get_active(
+                    GTK_TOGGLE_BUTTON(((struct UiDialogOverviewEntry *)tmp->data)->checkbox))) {
+            output_add(((struct UiDialogOverviewEntry *)tmp->data)->output_type,
+                    ((struct UiDialogOverviewEntry *)tmp->data)->output_data);
+        }
+    }
+
     output_print(application_get_current_tournament(), "test.pdf");
 }
 
