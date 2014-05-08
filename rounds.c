@@ -5,6 +5,12 @@
 #include "application.h"
 
 #include <glib/gprintf.h>
+#include <memory.h>
+
+struct RoundMatchingStackEntry {
+    gint64 *matching;
+    guint32 current[2];
+};
 
 void round_free(RinksRound *round)
 {
@@ -12,6 +18,26 @@ void round_free(RinksRound *round)
         return;
 
     g_free(round->description);
+}
+
+struct RoundMatchingStackEntry *round_matching_stack_entry_new(gint64 *current, guint32 len,
+                                                                guint32 first, guint32 second)
+{
+    struct RoundMatchingStackEntry *entry = g_malloc(sizeof(struct RoundMatchingStackEntry));
+    entry->matching = g_malloc(sizeof(gint64) * len);
+    memcpy(entry->matching, current, sizeof(gint64) * len);
+    entry->current[0] = first;
+    entry->current[1] = second;
+
+    return entry;
+}
+
+void round_matching_stack_entry_free(struct RoundMatchingStackEntry *entry)
+{
+    if (entry != NULL) {
+        g_free(entry->matching);
+        g_free(entry);
+    }
 }
 
 void rounds_create_encounters_group(RinksTournament *tournament, RinksRound *round)
@@ -111,181 +137,14 @@ void util_array_move_element(gint64 *array, guint from, guint to)
         t = array[from];
         for (i = from; i > to; --i)
             array[i] = array[i - 1];
-        array[i] = t;
+        array[to] = t;
     }
     else {
         t = array[from];
         for (i = from; i < to; ++i)
             array[i] = array[i + 1];
-        array[i] = t;
+        array[to] = t;
     }
-}
-
-/* only pass teams for that type of encounters e.g. only teams of one group */
-void rounds_map_teams_to_encounters(RinksTournament *tournament, RinksRound *round, GList *teams, GList *encounters)
-{
-#if 0
-    if (round == NULL || teams == NULL || encounters == NULL)
-        return;
-
-    GList *ts = teams_sort(g_list_copy(teams), RinksTeamSortGroup);
-    GList *es = encounters_sort(g_list_copy(encounters), RinksEncounterSortLogical);
-    
-    /* TODO: do real mapping of abstract teams (e.g. a:2 vs b:3) 
-     * for now: a:1 vs a:2, a:3 vs a:4, … expected */
-
-    guint team_count = g_list_length(ts);
-    gint64 *team_ids = g_malloc0(sizeof(gint64) * team_count);
-
-    GList *tmp;
-    guint i, j;
-
-    for (i = 0, tmp = ts; tmp != NULL && i < team_count; tmp = g_list_next(tmp), ++i) {
-        team_ids[i] = ((RinksTeam *)tmp->data)->id;
-    }
-
-    /* modify list so that no one sees the same encounter as before */
-    /* TODO: switch with encounter above */
-    /* first pass: from top to bottom: find next best; if no team left, stop, second pass
-     * second pass: from bottom to top: find next worst; */
-    if (!(round->flags & RinksRoundFlagAllowReencounters)) {
-        gboolean conflict = FALSE;
-        for (i = 0; i < team_count; i += 2) {
-            j = 1;
-            while (i + j < team_count &&
-                    tournament_existed_encounter_before(tournament, round->id, team_ids[i], team_ids[i+j])) {
-                ++j;
-            }
-            if (i + j == team_count) {
-                conflict = TRUE;
-                break;
-            }
-            else {
-                util_array_move_element(team_ids, i + 1, i + j);
-            }
-        }
-        for (i = team_count - 1; i > 0; i -= 2) {
-            j = 1;
-            while (i >= j &&
-                    tournament_existed_encounter_before(tournament, round->id, team_ids[i], team_ids[i-j])) {
-                ++j;
-            }
-            if (j > i) {
-                g_printf("error: could not find matching\n");
-            }
-            else {
-                util_array_move_element(team_ids, i - 1, i - j);
-            }
-            if (i == 1)
-                break;
-        }
-        /* sort pairwise? [12453768]->[12374568] */
-    }
-
-    /* map to encounters */
-    for (i = 0, tmp = es; i + 1 < team_count && tmp != NULL; tmp = g_list_next(tmp), i += 2) {
-        ((RinksEncounter *)tmp->data)->real_team1 = team_ids[i];
-        ((RinksEncounter *)tmp->data)->real_team2 = team_ids[i + 1];
-        g_printf("map encounter: %" G_GINT64_FORMAT ": %" G_GINT64_FORMAT " vs %" G_GINT64_FORMAT "\n",
-                ((RinksEncounter *)tmp->data)->id, team_ids[i], team_ids[i + 1]);
-        tournament_update_encounter(tournament, (RinksEncounter *)tmp->data);
-    }
-#endif
-}
-
-void rounds_create_games_for_encounters(RinksTournament *tournament, RinksRound *round,
-                                        GList *teams, GList *encounters, RinksGameOrder order)
-{
-#if 0
-    gint64 game_id;
-    GList *tmp;
-    gint32 rinkcount = tournament_get_rink_count(tournament);
-    gint32 cur_rink = rinkcount;
-
-    gint game_count = 0;
-    RinksGame game;
-
-    game.closed = 0;
-    game.sequence = 0;
-
-    for (tmp = encounters; tmp != NULL; tmp = g_list_next(tmp)) {
-        if (++cur_rink > rinkcount) {
-            game.description = g_strdup_printf("%s, Spiel %d", round->description, ++game_count);
-            game_id = tournament_add_game(tournament, &game);
-            g_free(game.description);
-
-            cur_rink = 1;
-        }
-
-        ((RinksEncounter *)tmp->data)->game = game_id;
-        tournament_update_encounter(tournament, (RinksEncounter *)tmp->data);
-    }
-#endif
-}
-
-void rounds_create_games(gint64 round_id, RinksGameOrder order)
-{
-#if 0
-    /* 1. map teams to encounters (group intern, all) 
-     * 2. pack encounters to games
-     * 3. pack encounters of games to rinks */
-
-    RinksTournament *tournament = application_get_current_tournament();
-    RinksRound *round = tournament_get_round(tournament, round_id);
-
-    GList *teams = NULL, *encounters = NULL;
-
-    if (round == NULL)
-        goto out;
-
-    teams = tournament_get_teams(tournament);
-    if (teams == NULL)
-        goto out;
-
-    GList *teams_filtered = NULL, *teams_sliced = NULL;
-
-    encounters = tournament_get_encounters(tournament, round->id, 0);
-    if (encounters == NULL)
-        goto out;
-
-    GList *encounters_group = NULL;
-    gint ngroups, i;
-
-
-    switch (round->type) {
-        case ROUND_TYPE_NEXT_TO_GROUP:
-            ngroups = tournament_get_group_count(tournament);
-            for (i = 1; i <= ngroups; ++i) {
-                teams_filtered = teams_filter(teams, RinksTeamFilterTypeGroup, GINT_TO_POINTER(i));
-                teams_sliced = teams_get_range(teams_filtered, round->range_start,
-                        round->range_end - round->range_start + 1);
-                g_list_free(teams_filtered);
-                encounters_group = encounters_filter_group(encounters, i);
-
-                rounds_map_teams_to_encounters(tournament, round, teams_sliced, encounters_group);
-
-                g_list_free(teams_sliced);
-                g_list_free(encounters_group);
-            }
-            break;
-        case ROUND_TYPE_NEXT_TO_ALL:
-            teams_sliced = teams_get_range(teams, round->range_start,
-                    round->range_end - round->range_start + 1);
-            rounds_map_teams_to_encounters(tournament, round, teams_sliced, encounters);
-            g_list_free(teams_sliced);
-            break;
-        case ROUND_TYPE_ROUND_ROBIN:
-            break;
-    }
-
-    rounds_create_games_for_encounters(tournament, round, teams, encounters, order);
-
-out:
-    if (round != NULL)
-        round_free(round);
-    g_list_free_full(encounters, (GDestroyNotify)encounter_free);
-    g_list_free_full(teams, (GDestroyNotify)team_free);
-#endif
 }
 
 gint rounds_compare_encounter_before(RinksEncounter *encounter, RinksEncounter *comp)
@@ -308,14 +167,10 @@ gboolean rounds_existed_encounter_before(GList *encounters, gint64 team1, gint64
     comp.real_team1 = team1;
     comp.real_team2 = team2;
     comp.round = current_round;
-    g_printf("encounter %" G_GINT64_FORMAT " vs %" G_GINT64_FORMAT " existed before %" G_GINT64_FORMAT,
-            team1, team2, current_round);
     if (g_list_find_custom(encounters, &comp, (GCompareFunc)rounds_compare_encounter_before) != NULL) {
-        g_printf(" TRUE\n");
         return TRUE;
     }
 
-    g_printf(" FALSE\n");
     return FALSE;
 }
 
@@ -364,8 +219,6 @@ gboolean rounds_does_override_exist(GList *overrides, gint64 round, gint64 team1
                   ((RinksOverride *)tmp->data)->team2 == team2) ||
                  (((RinksOverride *)tmp->data)->team1 == team2 &&
                   ((RinksOverride *)tmp->data)->team2 == team1))) {
-            g_printf("override for %" G_GINT64_FORMAT " %" G_GINT64_FORMAT " vs %" G_GINT64_FORMAT " exists\n",
-                    round, team1, team2);
             return TRUE;
         }
     }
@@ -385,7 +238,6 @@ RinksOverride *rounds_get_override(GList *override, gint64 encounter)
 
 void rounds_set_overrides(gint64 round, GList *overrides, GList *encounters, gint64 *teams, guint32 *nteams)
 {
-    g_printf("set overrides\n");
     GList *tmp;
     RinksOverride *override;
     guint32 i, j;
@@ -402,7 +254,6 @@ void rounds_set_overrides(gint64 round, GList *overrides, GList *encounters, gin
                 /* set array elements to zero */
                 i = rounds_find_id_in_array(teams, override->team1, *nteams);
                 j = rounds_find_id_in_array(teams, override->team2, *nteams);
-                g_printf("set override %" G_GUINT32_FORMAT ", %" G_GUINT32_FORMAT "\n", i, j);
                 if (i != *nteams && j != *nteams) {
                     teams[i] = teams[j] = 0;
                     newlen -= 2;
@@ -430,7 +281,6 @@ void rounds_set_overrides(gint64 round, GList *overrides, GList *encounters, gin
 void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_teams, GList *map_encounters,
         RinksRound *round, GList *all_teams, GList *all_encounters, GList *overrides)
 {
-    g_printf("rounds_map_encounters_for_round\n");
     guint32 nteams = g_list_length(map_teams);
     guint32 nencounters = g_list_length(map_encounters);
 
@@ -438,18 +288,22 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
         g_printf("error: number of teams and encounters not matching\n");
     gint64 *teams = g_malloc(sizeof(gint64) * nteams);
     gint64 *teams_orig = g_malloc(sizeof(gint64) * nteams);
+    gint64 *teams_result = NULL, *current = NULL;
     guint32 nteams_orig = nteams;
+
+    GQueue *stack = g_queue_new();
+    struct RoundMatchingStackEntry *stack_entry = NULL;
 
     guint32 i, j;
     GList *tmp;
 
     for (i = 0, tmp = map_teams; tmp != NULL && i < nteams; ++i, tmp = g_list_next(tmp)) {
         teams_orig[i] = teams[i] = ((RinksTeam *)tmp->data)->id;
-        g_printf("rd %" G_GINT64_FORMAT " team %" G_GINT64_FORMAT ": %d %d %d\n",
+/*        g_printf("rd %" G_GINT64_FORMAT " team %" G_GINT64_FORMAT ": %d %d %d\n",
                 round->id, ((RinksTeam *)tmp->data)->id,
                 ((RinksTeam *)tmp->data)->points,
                 ((RinksTeam *)tmp->data)->ends,
-                ((RinksTeam *)tmp->data)->stones);
+                ((RinksTeam *)tmp->data)->stones);*/
     }
 
     /* shrink by overridden encounters */
@@ -458,67 +312,66 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
     if (nteams == 0) {
         goto out;
     }
-/*    for (i = 0, tmp = map_encounters; tmp != NULL && i < nencounters; ++i, tmp = g_list_next(tmp)) {
-        encounters_encounter_parse_abstract_team(((RinksEncounter *)tmp->data), 1, NULL, &pos);
-        if (pos >= 1 && pos <= nteams)
-            encounters[i].real_team1 = teams[pos - 1];
-        encounters_encounter_parse_abstract_team(((RinksEncounter *)tmp->data), 2, NULL, &pos);
-        if (pos >= 1 && pos <= nteams)
-            encounters[i].real_team2 = teams[pos - 1];
-    }*/
 
-#if 0    /* do some magic rearranging */
+    teams_result = g_malloc(sizeof(gint64) * nteams);
+    current = g_malloc(sizeof(gint64) * nteams);
+    memcpy(teams_result, teams, sizeof(gint64) * nteams);
+    memcpy(current, teams, sizeof(gint64) * nteams);
+
     gboolean conflict = FALSE;
-    if (!(round->flags & RinksRoundFlagAllowReencounters)) {
-        g_printf("before first pass (round %" G_GINT64_FORMAT ")\n", round->id);
-        for (i = 0; i < nteams; ++i)
-            g_printf(" %" G_GINT64_FORMAT, teams[i]);
-        for (i = 0; i < nteams - 1; i += 2) {
-            if (!rounds_does_override_exist(overrides, round->id, teams[i], teams[i+1])) {
-                j = 1;
-                while (i + j < nteams &&
-                    rounds_existed_encounter_before(all_encounters,
-                            teams[i], teams[i + j], round->id)) {
+    for (i = 0; i < nteams; i += 2) {
+        j = i + 1;
+        while (j < nteams &&
+                rounds_existed_encounter_before(all_encounters,
+                    current[i], current[j], round->id)) {
+            ++j;
+        }
+        if (j == nteams) {
+            conflict = TRUE;
+            break;
+        }
+        stack_entry = round_matching_stack_entry_new(current, nteams, i, j);
+        g_queue_push_head(stack, stack_entry);
+        util_array_move_element(current, j, i + 1);
+        /* set next encounter correctly */
+        j = i + 3;
+    }
+
+    if (!conflict) {
+        memcpy(teams_result, current, sizeof(gint64) * nteams);
+    }
+    else {
+        while (!g_queue_is_empty(stack)) {
+            stack_entry = (struct RoundMatchingStackEntry *)g_queue_pop_head(stack);
+            memcpy(current, stack_entry->matching, sizeof(gint64) * nteams);
+            i = stack_entry->current[0];
+            j = stack_entry->current[1] + 1;
+            round_matching_stack_entry_free(stack_entry);
+            
+            conflict = FALSE;
+            for ( ; i < nteams; i += 2) {
+                while (j < nteams &&
+                        rounds_existed_encounter_before(all_encounters,
+                            current[i], current[j], round->id)) {
                     ++j;
                 }
-                if (i + j == nteams) {
-                    g_printf("conflict for pos %d\n", i);
+                if (j == nteams) {
                     conflict = TRUE;
                     break;
                 }
-                else {
-                    g_printf("move %d to %d\n", i + 1, i + j);
-                    util_array_move_element(teams, i + j, i + 1);
-                }
+                stack_entry = round_matching_stack_entry_new(current, nteams, i, j);
+                g_queue_push_head(stack, stack_entry);
+                util_array_move_element(current, j, i + 1);
+                j = i + 3;
             }
-        }
-        g_printf("\nbefore second pass\n");
-        for (i = 0; i < nteams; ++i)
-            g_printf(" %" G_GINT64_FORMAT, teams[i]);
-        for (i = nteams - 1; i > 0; i -= 2) {
-            if (!rounds_does_override_exist(overrides, round->id, teams[i], teams[i-1])) {
-                j = 1;
-                while (i >= j &&
-                        rounds_existed_encounter_before(all_encounters,
-                            teams[i], teams[i - j], round->id)) {
-                    ++j;
-                }
-                if (j > i) {
-                    g_printf("\nerror: could not find matching\n");
-                }
-                else {
-                    util_array_move_element(teams, i - j, i - 1);
-                }
-            }
-            if (i == 1)
+
+            if (!conflict) {
+                memcpy(teams_result, current, sizeof(gint64) * nteams);
                 break;
+            }
         }
-        g_printf("\nafter last pass\n");
-        for (i = 0; i < nteams; ++i)
-            g_printf(" %" G_GINT64_FORMAT, teams[i]);
-        g_printf("\n");
     }
-#endif
+
     /* write encounters back */
     RinksOverride *ovr;
     for (i = 0, tmp = map_encounters; tmp != NULL && i < nteams; i += 2, tmp = g_list_next(tmp)) {
@@ -533,14 +386,16 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
         if (tmp == NULL)
             break;
 
-        ((RinksEncounter *)tmp->data)->real_team1 = teams[i];
-        ((RinksEncounter *)tmp->data)->real_team2 = teams[i + 1];
+        ((RinksEncounter *)tmp->data)->real_team1 = teams_result[i];
+        ((RinksEncounter *)tmp->data)->real_team2 = teams_result[i + 1];
     }
 out:
-    if (teams)
-        g_free(teams);
-    if (teams_orig)
-        g_free(teams_orig);
+    g_free(teams);
+    g_free(teams_orig);
+    g_free(teams_result);
+    g_free(current);
+
+    g_queue_free_full(stack, (GDestroyNotify)round_matching_stack_entry_free);
 }
 
 void rounds_update_encounters(void)
