@@ -44,4 +44,10 @@ GList *encounters_sort(GList *encounters, RinksEncounterSortMode mode);
 gchar *encounters_translate(RinksEncounter *encounter);
 
 gboolean encounters_encounter_parse_abstract_team(RinksEncounter *encounter, gint team, gint32 *group, gint32 *pos);
-GList *encounters_filter_group(GList *encounters, gint32 group);
+
+typedef enum {
+    RinksEncounterFilterTypeRound,
+    RinksEncounterFilterTypeGroup
+} RinksEncounterFilterType;
+
+GList *encounters_filter(GList *encounters, RinksEncounterFilterType type, gint64 filter);

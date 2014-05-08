@@ -148,18 +148,25 @@ gchar *encounters_translate(RinksEncounter *encounter)
 
 }
 
-GList *encounters_filter_group(GList *encounters, gint32 group)
+GList *encounters_filter(GList *encounters, RinksEncounterFilterType type, gint64 filter)
 {
     gint32 g1, g2;
     GList *filtered = NULL;
     GList *tmp;
 
     for (tmp = encounters; tmp != NULL; tmp = g_list_next(tmp)) {
-        if (encounters_encounter_parse_abstract_team((RinksEncounter *)tmp->data,
-                    1, &g1, NULL) &&
-                encounters_encounter_parse_abstract_team((RinksEncounter *)tmp->data,
-                    2, &g2, NULL) && g1 == g2 && g1 == group) {
-            filtered = g_list_prepend(filtered, tmp->data);
+        if (type == RinksEncounterFilterTypeGroup) {
+            if (encounters_encounter_parse_abstract_team((RinksEncounter *)tmp->data,
+                        1, &g1, NULL) &&
+                    encounters_encounter_parse_abstract_team((RinksEncounter *)tmp->data,
+                        2, &g2, NULL) && g1 == g2 && g1 == (gint32)filter) {
+                filtered = g_list_prepend(filtered, tmp->data);
+            }
+        }
+        else if (type == RinksEncounterFilterTypeRound) {
+            if (((RinksEncounter *)tmp->data)->round == filter) {
+                filtered = g_list_prepend(filtered, tmp->data);
+            }
         }
     }
 
