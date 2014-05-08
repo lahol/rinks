@@ -4,10 +4,10 @@
 #include "tournament.h"
 
 typedef enum {
-    RinksOutputTypeGameEncounter, /* encounters of game in data */
-    RinksOutputTypeRoundEncounter, 
     RinksOutputTypeRanking,
-    RinksOutputTypeRankingGroup
+    RinksOutputTypeRankingGroup,
+    RinksOutputTypeRoundEncounter, 
+    RinksOutputTypeGameEncounter /* encounters of game in data */
 } RinksOutputType;
 
 void output_init(void);

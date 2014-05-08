@@ -12,6 +12,25 @@ typedef struct {
     gint64 data;
 } RinksOutputData;
 
+struct OutputPagePartialLine {
+    PangoLayout *layout;
+    gdouble pos;
+    gdouble height;
+};
+
+struct OutputPageContext {
+    cairo_t *cr;
+    cairo_surface_t *surf;
+    gdouble yoffset;
+    gdouble margin[4]; /* top bottom left right */
+    gdouble pagesize[2];
+    gdouble textwidth;
+    gdouble textheight;
+    gboolean in_line;
+    GList *partial_line;
+    gdouble line_height;
+};
+
 GList *output_data = NULL;
 
 void output_init(void)
@@ -25,13 +44,115 @@ void output_clear(void)
     output_data = NULL;
 }
 
+gint output_types_compare(RinksOutputData *a, RinksOutputData *b)
+{
+    if (a->type < b->type)
+        return -1;
+    if (a->type > b->type)
+        return 1;
+    if (a->data < b->data)
+        return -1;
+    if (a->data > b->data)
+        return 1;
+    return 0;
+}
+
 void output_add(RinksOutputType type, gint64 data)
 {
     RinksOutputData *entry = g_malloc0(sizeof(RinksOutputData));
     entry->type = type;
     entry->data = data;
 
-    output_data = g_list_prepend(output_data, entry);
+    output_data = g_list_insert_sorted(output_data, entry, (GCompareFunc)output_types_compare);
+}
+
+gboolean output_page_context_init(struct OutputPageContext *ctx, const gchar *filename)
+{
+    ctx->surf = cairo_pdf_surface_create(filename, CAIRO_MM_PTS * 210.0, CAIRO_MM_PTS * 297.0);
+    if (ctx->surf == NULL)
+        return FALSE;
+
+    ctx->cr = cairo_create(ctx->surf);
+
+    ctx->margin[0] = ctx->margin[1] = 20.0 * CAIRO_MM_PTS;
+    ctx->margin[2] = ctx->margin[3] = 30.0 * CAIRO_MM_PTS;
+
+    ctx->yoffset = ctx->margin[0];
+    ctx->textwidth = 210 * CAIRO_MM_PTS - ctx->margin[2] - ctx->margin[3];
+    ctx->textheight = 297 * CAIRO_MM_PTS - ctx->margin[0] - ctx->margin[1];
+
+    ctx->in_line = FALSE;
+    ctx->partial_line = NULL;
+
+    return TRUE;
+}
+
+void output_page_context_free_partial_line(struct OutputPagePartialLine *line)
+{
+    if (line == NULL)
+        return;
+    g_object_unref(line->layout);
+
+    g_free(line);
+}
+
+void output_page_context_free(struct OutputPageContext *ctx)
+{
+    if (ctx->cr)
+        cairo_destroy(ctx->cr);
+    if (ctx->surf)
+        cairo_surface_destroy(ctx->surf);
+    g_list_free_full(ctx->partial_line, (GDestroyNotify)output_page_context_free_partial_line);
+}
+
+void output_page_context_output(struct OutputPageContext *ctx)
+{
+    GList *tmp;
+    if (ctx->line_height + ctx->yoffset > ctx->textheight) {
+        cairo_show_page(ctx->cr);
+        ctx->yoffset = ctx->margin[0];
+    }
+
+    for (tmp = g_list_last(ctx->partial_line); tmp != NULL; tmp = g_list_previous(tmp)) {
+        cairo_identity_matrix(ctx->cr);
+        cairo_translate(ctx->cr,
+                ctx->margin[2] + ((struct OutputPagePartialLine *)tmp->data)->pos,
+                ctx->yoffset);
+        
+        pango_cairo_update_layout(ctx->cr,
+                ((struct OutputPagePartialLine *)tmp->data)->layout);
+        pango_cairo_show_layout(ctx->cr,
+                ((struct OutputPagePartialLine *)tmp->data)->layout);
+    }
+
+    ctx->yoffset += ctx->line_height;
+
+    g_list_free_full(ctx->partial_line, (GDestroyNotify)output_page_context_free_partial_line);
+    ctx->partial_line = NULL;
+    ctx->line_height = 0.0;
+}
+
+void output_print_skip_space(struct OutputPageContext *ctx, gdouble space)
+{
+    if (space + ctx->yoffset > ctx->textheight) {
+        cairo_show_page(ctx->cr);
+        ctx->yoffset = ctx->margin[0];
+    }
+    else {
+        ctx->yoffset += space;
+    }
+}
+
+void output_page_context_partial_line_start(struct OutputPageContext *ctx)
+{
+    ctx->line_height = 0.0;
+    ctx->in_line = TRUE;
+}
+
+void output_page_context_partial_line_end(struct OutputPageContext *ctx)
+{
+    output_page_context_output(ctx);
+    ctx->in_line = FALSE;
 }
 
 gchar **output_format_game_encounter(RinksTournament *tournament, RinksEncounter *encounter)
@@ -149,13 +270,16 @@ gchar *output_format_game_plain(RinksTournament *tournament, gint64 data, RinksG
     if (game == NULL)
         return NULL;
     GList *encounters = tournament_get_encounters(tournament, 0, data);
-    if (encounters == NULL)
-        return NULL;
+    gchar *result = NULL;
 
-    gchar *result = output_format_encounters_plain(tournament, encounters);
+    if (encounters == NULL)
+        goto out;
+
+    result = output_format_encounters_plain(tournament, encounters);
 
     g_list_free_full(encounters, (GDestroyNotify)encounter_free);
 
+out:
     if (game_pf == NULL) {
         game_free(game);
     }
@@ -218,40 +342,39 @@ PangoLayout *output_print_prepare_layout(cairo_t *cr, gdouble width_in_mm, gint 
     return layout;
 }
 
-gdouble output_print_line(cairo_t *cr, gdouble xoffset, gdouble yoffset, gdouble width,
-                          gchar *text, gint size, gboolean bold, PangoAlignment align)
+void output_print_line(struct OutputPageContext *ctx, gdouble xoffset, gdouble width,
+                       gchar *text, gint size, gboolean bold, PangoAlignment align)
 {
-    cairo_identity_matrix(cr);
-    cairo_translate(cr, xoffset*CAIRO_MM_PTS, yoffset*CAIRO_MM_PTS/PANGO_SCALE);
+    struct OutputPagePartialLine *line = g_malloc0(sizeof(struct OutputPagePartialLine));
+    line->layout = output_print_prepare_layout(ctx->cr, width, size, bold, align);
+    line->pos = xoffset * CAIRO_MM_PTS;
 
-    PangoLayout *layout = output_print_prepare_layout(cr, width, size, bold, align);
-
-    pango_layout_set_markup(layout, text, -1);
+    pango_layout_set_markup(line->layout, text, -1);
 
     int height;
-    pango_layout_get_size(layout, NULL, &height);
-    
-    pango_cairo_update_layout(cr, layout);
-    pango_cairo_show_layout(cr, layout);
+    pango_layout_get_size(line->layout, NULL, &height);
+    gdouble this_line_height = (gdouble)height/((gdouble)PANGO_SCALE);
+    if (this_line_height > ctx->line_height)
+        ctx->line_height = this_line_height;
 
-    g_object_unref(layout);
+    ctx->partial_line = g_list_prepend(ctx->partial_line, line);
 
-    return (gdouble)height/CAIRO_MM_PTS;
+    if (!ctx->in_line) {
+        output_page_context_output(ctx);
+    }
 }
 
-gdouble output_print_heading(cairo_t *cr, gdouble xoffset, gdouble yoffset, gchar *heading, RinksTournament *tournament)
+void output_print_heading(struct OutputPageContext *ctx, gdouble xoffset, gchar *heading, RinksTournament *tournament)
 {
-    return output_print_line(cr, xoffset, yoffset, 150.0, heading, 12, TRUE, PANGO_ALIGN_LEFT);
+    output_print_line(ctx, xoffset, 150.0, heading, 12, TRUE, PANGO_ALIGN_LEFT);
 }
 
-gdouble output_print_title(cairo_t *cr, gdouble xoffset, gdouble yoffset, RinksTournament *tournament)
+void output_print_title(struct OutputPageContext *ctx, gdouble xoffset, RinksTournament *tournament)
 {
-    gdouble height = 0;
-
     /* print tournament title */
     gchar *title = tournament_get_property(tournament, "tournament.description");
 /*    height += output_print_heading(cr, xoffset, yoffset, title, tournament);*/
-    height += output_print_line(cr, xoffset, yoffset, 150.0, title, 18, TRUE, PANGO_ALIGN_LEFT);
+    output_print_line(ctx, xoffset, 150.0, title, 18, TRUE, PANGO_ALIGN_LEFT);
     g_free(title);
     /* print current time */
 
@@ -260,95 +383,127 @@ gdouble output_print_title(cairo_t *cr, gdouble xoffset, gdouble yoffset, RinksT
     gchar buffer[512];
 
     strftime(buffer, 511, "Stand: %d.%m.%Y %H:%M Uhr", tm);
-    height += output_print_line(cr, xoffset, yoffset + height, 150.0, buffer, 8, FALSE, PANGO_ALIGN_LEFT);
-
-    return height;
+    output_print_line(ctx, xoffset, 150.0, buffer, 8, FALSE, PANGO_ALIGN_LEFT);
 }
 
-gdouble output_print_standings(cairo_t *cr, gdouble xoffset, gdouble yoffset, RinksTournament *tournament)
+void output_print_standings(struct OutputPageContext *ctx, gdouble xoffset, gchar **standings)
 {
-    gchar **standings = output_format_standings_raw(tournament, RinksOutputTypeRanking, 0, NULL);
     if (standings == NULL)
-        return 0.0;
-
-    gdouble height = 0.0;
-    gdouble curheight, maxheight;
-
-    height += output_print_heading(cr, xoffset, yoffset, "Aktuelle Gesamtrangliste", tournament);
-
-    maxheight = output_print_line(cr, xoffset, yoffset + height, 7.0, "Rg", 10, TRUE, PANGO_ALIGN_RIGHT);
-
-    curheight = output_print_line(cr, xoffset + 12.0, yoffset + height, 110.0, "Team", 10, TRUE, PANGO_ALIGN_LEFT);
-    if (curheight > maxheight)
-        maxheight = curheight;
-    curheight = output_print_line(cr, xoffset + 127.0, yoffset + height, 7.0, "P", 10, TRUE, PANGO_ALIGN_RIGHT);
-    if (curheight > maxheight)
-        maxheight = curheight;
-    curheight = output_print_line(cr, xoffset + 135.0, yoffset + height, 7.0, "E", 10, TRUE, PANGO_ALIGN_RIGHT);
-    if (curheight > maxheight)
-        maxheight = curheight;
-    curheight = output_print_line(cr, xoffset + 143.0, yoffset + height, 7.0, "S", 10, TRUE, PANGO_ALIGN_RIGHT);
-    if (curheight > maxheight)
-        maxheight = curheight;
-    height += maxheight;
+        return;
+    output_page_context_partial_line_start(ctx);
+    output_print_line(ctx, xoffset, 7.0, "Rg", 10, TRUE, PANGO_ALIGN_RIGHT);
+    output_print_line(ctx, xoffset + 12.0, 110.0, "Team", 10, TRUE, PANGO_ALIGN_LEFT);
+    output_print_line(ctx, xoffset + 127.0, 7.0, "P", 10, TRUE, PANGO_ALIGN_RIGHT);
+    output_print_line(ctx, xoffset + 135.0, 7.0, "E", 10, TRUE, PANGO_ALIGN_RIGHT);
+    output_print_line(ctx, xoffset + 143.0, 7.0, "S", 10, TRUE, PANGO_ALIGN_RIGHT);
+    output_page_context_partial_line_end(ctx);
 
     guint32 i = 0;
     while (standings[i] != NULL) {
         /* pango_layout_set_tabs */
-        maxheight = output_print_line(cr, xoffset, yoffset + height, 7.0, standings[i], 10, FALSE, PANGO_ALIGN_RIGHT);
-
-        curheight = output_print_line(cr, xoffset + 12.0, yoffset + height, 110.0, standings[i + 1], 10, FALSE, PANGO_ALIGN_LEFT);
-        if (curheight > maxheight)
-            maxheight = curheight;
-        curheight = output_print_line(cr, xoffset + 127.0, yoffset + height, 7.0, standings[i + 2], 10, FALSE, PANGO_ALIGN_RIGHT);
-        if (curheight > maxheight)
-            maxheight = curheight;
-        curheight = output_print_line(cr, xoffset + 135.0, yoffset + height, 7.0, standings[i + 3], 10, FALSE, PANGO_ALIGN_RIGHT);
-        if (curheight > maxheight)
-            maxheight = curheight;
-        curheight = output_print_line(cr, xoffset + 143.0, yoffset + height, 7.0, standings[i + 4], 10, FALSE, PANGO_ALIGN_RIGHT);
-        if (curheight > maxheight)
-            maxheight = curheight;
-        height += maxheight;
+        output_page_context_partial_line_start(ctx);
+        output_print_line(ctx, xoffset, 7.0, standings[i], 10, FALSE, PANGO_ALIGN_RIGHT);
+        output_print_line(ctx, xoffset + 12.0, 110.0, standings[i + 1], 10, FALSE, PANGO_ALIGN_LEFT);
+        output_print_line(ctx, xoffset + 127.0, 7.0, standings[i + 2], 10, FALSE, PANGO_ALIGN_RIGHT);
+        output_print_line(ctx, xoffset + 135.0, 7.0, standings[i + 3], 10, FALSE, PANGO_ALIGN_RIGHT);
+        output_print_line(ctx, xoffset + 143.0, 7.0, standings[i + 4], 10, FALSE, PANGO_ALIGN_RIGHT);
+        output_page_context_partial_line_end(ctx);
         
         i += 5;
     }
 
-    return height;
 }
 
-gdouble output_print_group_standings(cairo_t *cr, gdouble xoffset, gdouble offset, RinksTournament *tournament, gint32 group_id)
+void output_print_standings_complete(struct OutputPageContext *ctx, gdouble xoffset, RinksTournament *tournament)
 {
-    return 0.0;
+    gchar **standings = output_format_standings_raw(tournament, RinksOutputTypeRanking, 0, NULL);
+    if (standings == NULL)
+        return;
+
+    output_print_heading(ctx, xoffset, "Aktuelle Gesamtrangliste", tournament);
+    output_print_standings(ctx, xoffset, standings);
+
+    g_strfreev(standings);
 }
 
-gdouble output_print_game_encounter(cairo_t *cr, gdouble xoffset, gdouble offset, RinksTournament *tournament, gint64 game_id)
+void output_print_group_standings(struct OutputPageContext *ctx, gdouble xoffset, RinksTournament *tournament, gint32 group_id)
 {
-    return 0.0;
+    gchar **standings = output_format_standings_raw(tournament, RinksOutputTypeRankingGroup, group_id, NULL);
+    if (standings == NULL)
+        return;
+
+    gchar *title = g_strdup_printf("Rangliste Gruppe %c", (gchar)(group_id - 1 + 'A'));
+    output_print_heading(ctx, xoffset, title, tournament);
+    g_free(title);
+    output_print_standings(ctx, xoffset, standings);
+
+    g_strfreev(standings);
+}
+
+void output_print_game_encounter(struct OutputPageContext *ctx, gdouble xoffset, RinksTournament *tournament, gint64 game_id)
+{
+    RinksGame *game = tournament_get_game(tournament, (gint32)game_id);
+    if (game == NULL)
+        return;
+    GList *encounters = tournament_get_encounters(tournament, 0, (gint32)game_id);
+    if (encounters == NULL) {
+        game_free(game);
+        return;
+    }
+
+    gchar *title = g_strdup_printf("Paarungen für %s", game->description);
+    output_print_heading(ctx, xoffset, title, tournament);
+    g_free(title);
+    
+    GList *tmp;
+    gchar **line;
+    for (tmp = encounters; tmp != NULL; tmp = g_list_next(tmp)) {
+        line = output_format_game_encounter(tournament, ((RinksEncounter *)tmp->data));
+        if (line != NULL) {
+            output_page_context_partial_line_start(ctx);
+            output_print_line(ctx, xoffset, 60.0, line[1], 10, FALSE, PANGO_ALIGN_LEFT);
+            output_print_line(ctx, xoffset + 62.0, 4, ":", 10, FALSE, PANGO_ALIGN_CENTER);
+            output_print_line(ctx, xoffset + 68.0, 60, line[2], 10, FALSE, PANGO_ALIGN_LEFT);
+            output_print_line(ctx, xoffset + 130.0, 20.0, line[0], 10, FALSE, PANGO_ALIGN_RIGHT);
+            output_page_context_partial_line_end(ctx);
+        }
+    }
+
+    g_list_free_full(encounters, (GDestroyNotify)encounter_free);
+    game_free(game);
 }
 
 gboolean output_print(RinksTournament *tournament, const gchar *filename)
 {
-    cairo_t *cr;
-    cairo_surface_t *surface;
-
-    surface = cairo_pdf_surface_create(filename, CAIRO_MM_PTS * 210.0, CAIRO_MM_PTS * 297.0);
-    cr = cairo_create(surface);
-
-    gdouble yoffset = 20.0;
-    gdouble xoffset = 30.0;
+    struct OutputPageContext page;
+    if (!output_page_context_init(&page, filename))
+        return FALSE;
 
     /* render tournament title */
-    yoffset += output_print_title(cr, xoffset, yoffset, tournament);
-    yoffset += 5.0;
-    yoffset += output_print_standings(cr, xoffset, yoffset, tournament);
-            /*cairo_show_page(cr);*/
-    /* wenn in liste: render standings */
-    /* wenn in liste: render group standings */
-    /* wenn in liste: render game encounters */
-    
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
+    output_print_title(&page, 0.0, tournament);
 
+    GList *tmp;
+    for (tmp = output_data; tmp != NULL; tmp = g_list_next(tmp)) {
+        switch (((RinksOutputData *)tmp->data)->type) {
+            case RinksOutputTypeRanking:
+                output_print_skip_space(&page, 10);
+                output_print_standings_complete(&page, 0.0, tournament);
+                break;
+            case RinksOutputTypeRankingGroup:
+                output_print_skip_space(&page, 10);
+                output_print_group_standings(&page, 0.0, tournament, (gint32)((RinksOutputData *)tmp->data)->data);
+                break;
+            case RinksOutputTypeRoundEncounter:
+                break;
+            case RinksOutputTypeGameEncounter:
+                output_print_skip_space(&page, 10);
+                output_print_game_encounter(&page, 0.0, tournament, ((RinksOutputData *)tmp->data)->data);
+                break;
+        }
+
+    }
+
+    output_page_context_free(&page);
+    
     return TRUE;
 }
