@@ -1,0 +1,1 @@
+Build sqlite with CFLAGS="-DSQLITE_ENABLE_COLUMN_METADATA".

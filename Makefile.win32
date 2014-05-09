@@ -1,0 +1,32 @@
+CC=$(CROSS)gcc
+LD=$(CROSS)ld
+AR=$(CROSS)ar
+PKG_CONFIG=$(CROSS)pkg-config
+WINDRES=$(CROSS)windres
+
+CFLAGS = -Wall -g -I$(CROSSENV)/usr/include `$(PKG_CONFIG) --cflags glib-2.0 gtk+-2.0` -mms-bitfields
+LDFLAGS=-Wl,-subsystem,windows
+LIBS=-L$(CROSSENV)/usr/lib `$(PKG_CONFIG) --libs glib-2.0 gtk+-2.0 sqlite3`
+
+APPNAME := rinks
+PREFIX := /usr
+
+rinks_SRC := $(wildcard *.c)
+rinks_OBJ := $(rinks_SRC:.c=.o)
+rinks_HEADERS := $(wildcard *.h)
+
+all: $(APPNAME).exe
+
+$(APPNAME).exe: $(rinks_OBJ)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+%.o: %.c $(rinks_HEADERS)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+install: $(APPNAME)
+	install $(APPNAME) $(PREFIX)/bin
+
+clean:
+	rm -f $(APPNAME).exe $(rinks_OBJ)
+
+.PHONY: all clean install
