@@ -29,9 +29,14 @@ struct OutputPageContext {
     gboolean in_line;
     GList *partial_line;
     gdouble line_height;
+    gchar *footer;
+    gint page_num;
+    gdouble orphan_risk;
 };
 
 GList *output_data = NULL;
+
+void output_print_footer(struct OutputPageContext *ctx);
 
 void output_init(void)
 {
@@ -83,6 +88,8 @@ gboolean output_page_context_init(struct OutputPageContext *ctx, const gchar *fi
 
     ctx->in_line = FALSE;
     ctx->partial_line = NULL;
+    ctx->footer = NULL;
+    ctx->page_num = 1;
 
     return TRUE;
 }
@@ -102,13 +109,17 @@ void output_page_context_free(struct OutputPageContext *ctx)
         cairo_destroy(ctx->cr);
     if (ctx->surf)
         cairo_surface_destroy(ctx->surf);
+    g_free(ctx->footer);
     g_list_free_full(ctx->partial_line, (GDestroyNotify)output_page_context_free_partial_line);
 }
 
-void output_page_context_output(struct OutputPageContext *ctx)
+void output_page_context_output(struct OutputPageContext *ctx, gboolean orphan_risk)
 {
     GList *tmp;
-    if (ctx->line_height + ctx->yoffset > ctx->textheight) {
+    if (ctx->line_height + ctx->yoffset > ctx->textheight ||
+        (orphan_risk && ctx->line_height + ctx->yoffset + 25.0 > ctx->textheight)) {
+        output_print_footer(ctx);
+        ++(ctx->page_num);
         cairo_show_page(ctx->cr);
         ctx->yoffset = ctx->margin[0];
     }
@@ -151,7 +162,7 @@ void output_page_context_partial_line_start(struct OutputPageContext *ctx)
 
 void output_page_context_partial_line_end(struct OutputPageContext *ctx)
 {
-    output_page_context_output(ctx);
+    output_page_context_output(ctx, ctx->orphan_risk);
     ctx->in_line = FALSE;
 }
 
@@ -343,7 +354,7 @@ PangoLayout *output_print_prepare_layout(cairo_t *cr, gdouble width_in_mm, gint 
 }
 
 void output_print_line(struct OutputPageContext *ctx, gdouble xoffset, gdouble width,
-                       gchar *text, gint size, gboolean bold, PangoAlignment align)
+                       gchar *text, gint size, gboolean bold, PangoAlignment align, gboolean orphan_risk)
 {
     struct OutputPagePartialLine *line = g_malloc0(sizeof(struct OutputPagePartialLine));
     line->layout = output_print_prepare_layout(ctx->cr, width, size, bold, align);
@@ -358,15 +369,59 @@ void output_print_line(struct OutputPageContext *ctx, gdouble xoffset, gdouble w
         ctx->line_height = this_line_height;
 
     ctx->partial_line = g_list_prepend(ctx->partial_line, line);
+    ctx->orphan_risk = orphan_risk;
 
     if (!ctx->in_line) {
-        output_page_context_output(ctx);
+        output_page_context_output(ctx, orphan_risk);
     }
+}
+
+void output_set_footer_text(struct OutputPageContext *ctx, gchar *text)
+{
+    if (ctx->footer) {
+        g_free(ctx->footer);
+    }
+    ctx->footer = g_strdup(text);
+}
+
+void output_print_footer(struct OutputPageContext *ctx)
+{
+    PangoLayout *layout;
+    gchar *text;
+    if (ctx->footer) {
+        layout = output_print_prepare_layout(ctx->cr, ctx->textwidth/CAIRO_MM_PTS - 20.0, 8, FALSE, PANGO_ALIGN_LEFT);
+        pango_layout_set_markup(layout, ctx->footer, -1);
+
+        cairo_identity_matrix(ctx->cr);
+        cairo_translate(ctx->cr,
+                ctx->margin[2],
+                297 * CAIRO_MM_PTS - ctx->margin[1] + 2.0 * CAIRO_MM_PTS);
+        pango_cairo_update_layout(ctx->cr, layout);
+        pango_cairo_show_layout(ctx->cr, layout);
+
+        g_object_unref(layout);
+    }
+
+    text = g_strdup_printf("%d", ctx->page_num);
+
+    layout = output_print_prepare_layout(ctx->cr, 18.0, 8, FALSE, PANGO_ALIGN_RIGHT);
+    pango_layout_set_markup(layout, text, -1);
+
+    cairo_identity_matrix(ctx->cr);
+    cairo_translate(ctx->cr,
+            ctx->margin[2] + ctx->textwidth - 18.0 * CAIRO_MM_PTS,
+            297 * CAIRO_MM_PTS - ctx->margin[1] + 2.0 * CAIRO_MM_PTS);
+    pango_cairo_update_layout(ctx->cr, layout);
+    pango_cairo_show_layout(ctx->cr, layout);
+
+    g_object_unref(layout);
+    g_free(text);
+
 }
 
 void output_print_heading(struct OutputPageContext *ctx, gdouble xoffset, gchar *heading, RinksTournament *tournament)
 {
-    output_print_line(ctx, xoffset, 150.0, heading, 12, TRUE, PANGO_ALIGN_LEFT);
+    output_print_line(ctx, xoffset, 150.0, heading, 12, TRUE, PANGO_ALIGN_LEFT, TRUE);
 }
 
 void output_print_title(struct OutputPageContext *ctx, gdouble xoffset, RinksTournament *tournament)
@@ -374,8 +429,9 @@ void output_print_title(struct OutputPageContext *ctx, gdouble xoffset, RinksTou
     /* print tournament title */
     gchar *title = tournament_get_property(tournament, "tournament.description");
 /*    height += output_print_heading(cr, xoffset, yoffset, title, tournament);*/
-    output_print_line(ctx, xoffset, 150.0, title, 18, TRUE, PANGO_ALIGN_LEFT);
-    g_free(title);
+    if (title != NULL) {
+        output_print_line(ctx, xoffset, 150.0, title, 18, TRUE, PANGO_ALIGN_LEFT, TRUE);
+    }
     /* print current time */
 
     time_t curtime = time(NULL);
@@ -383,7 +439,12 @@ void output_print_title(struct OutputPageContext *ctx, gdouble xoffset, RinksTou
     gchar buffer[512];
 
     strftime(buffer, 511, "Stand: %d.%m.%Y %H:%M Uhr", tm);
-    output_print_line(ctx, xoffset, 150.0, buffer, 8, FALSE, PANGO_ALIGN_LEFT);
+    output_print_line(ctx, xoffset, 150.0, buffer, 8, FALSE, PANGO_ALIGN_LEFT, FALSE);
+
+    gchar *footer_text = g_strdup_printf("%s, %s", title ? title : "", buffer);
+    output_set_footer_text(ctx, footer_text);
+    g_free(footer_text);
+    g_free(title);
 }
 
 void output_print_standings(struct OutputPageContext *ctx, gdouble xoffset, gchar **standings)
@@ -391,22 +452,22 @@ void output_print_standings(struct OutputPageContext *ctx, gdouble xoffset, gcha
     if (standings == NULL)
         return;
     output_page_context_partial_line_start(ctx);
-    output_print_line(ctx, xoffset, 7.0, "Rg", 10, TRUE, PANGO_ALIGN_RIGHT);
-    output_print_line(ctx, xoffset + 12.0, 110.0, "Team", 10, TRUE, PANGO_ALIGN_LEFT);
-    output_print_line(ctx, xoffset + 127.0, 7.0, "P", 10, TRUE, PANGO_ALIGN_RIGHT);
-    output_print_line(ctx, xoffset + 135.0, 7.0, "E", 10, TRUE, PANGO_ALIGN_RIGHT);
-    output_print_line(ctx, xoffset + 143.0, 7.0, "S", 10, TRUE, PANGO_ALIGN_RIGHT);
+    output_print_line(ctx, xoffset, 7.0, "Rg", 10, TRUE, PANGO_ALIGN_RIGHT, TRUE);
+    output_print_line(ctx, xoffset + 12.0, 110.0, "Team", 10, TRUE, PANGO_ALIGN_LEFT, TRUE);
+    output_print_line(ctx, xoffset + 127.0, 7.0, "P", 10, TRUE, PANGO_ALIGN_RIGHT, TRUE);
+    output_print_line(ctx, xoffset + 135.0, 7.0, "E", 10, TRUE, PANGO_ALIGN_RIGHT, TRUE);
+    output_print_line(ctx, xoffset + 143.0, 7.0, "S", 10, TRUE, PANGO_ALIGN_RIGHT, TRUE);
     output_page_context_partial_line_end(ctx);
 
     guint32 i = 0;
     while (standings[i] != NULL) {
         /* pango_layout_set_tabs */
         output_page_context_partial_line_start(ctx);
-        output_print_line(ctx, xoffset, 7.0, standings[i], 10, FALSE, PANGO_ALIGN_RIGHT);
-        output_print_line(ctx, xoffset + 12.0, 110.0, standings[i + 1], 10, FALSE, PANGO_ALIGN_LEFT);
-        output_print_line(ctx, xoffset + 127.0, 7.0, standings[i + 2], 10, FALSE, PANGO_ALIGN_RIGHT);
-        output_print_line(ctx, xoffset + 135.0, 7.0, standings[i + 3], 10, FALSE, PANGO_ALIGN_RIGHT);
-        output_print_line(ctx, xoffset + 143.0, 7.0, standings[i + 4], 10, FALSE, PANGO_ALIGN_RIGHT);
+        output_print_line(ctx, xoffset, 7.0, standings[i], 10, FALSE, PANGO_ALIGN_RIGHT, FALSE);
+        output_print_line(ctx, xoffset + 12.0, 110.0, standings[i + 1], 10, FALSE, PANGO_ALIGN_LEFT, FALSE);
+        output_print_line(ctx, xoffset + 127.0, 7.0, standings[i + 2], 10, FALSE, PANGO_ALIGN_RIGHT, FALSE);
+        output_print_line(ctx, xoffset + 135.0, 7.0, standings[i + 3], 10, FALSE, PANGO_ALIGN_RIGHT, FALSE);
+        output_print_line(ctx, xoffset + 143.0, 7.0, standings[i + 4], 10, FALSE, PANGO_ALIGN_RIGHT, FALSE);
         output_page_context_partial_line_end(ctx);
         
         i += 5;
@@ -461,10 +522,10 @@ void output_print_game_encounter(struct OutputPageContext *ctx, gdouble xoffset,
         line = output_format_game_encounter(tournament, ((RinksEncounter *)tmp->data));
         if (line != NULL) {
             output_page_context_partial_line_start(ctx);
-            output_print_line(ctx, xoffset, 60.0, line[1], 10, FALSE, PANGO_ALIGN_LEFT);
-            output_print_line(ctx, xoffset + 62.0, 4, ":", 10, FALSE, PANGO_ALIGN_CENTER);
-            output_print_line(ctx, xoffset + 68.0, 60, line[2], 10, FALSE, PANGO_ALIGN_LEFT);
-            output_print_line(ctx, xoffset + 130.0, 20.0, line[0], 10, FALSE, PANGO_ALIGN_RIGHT);
+            output_print_line(ctx, xoffset, 60.0, line[1], 10, FALSE, PANGO_ALIGN_LEFT, FALSE);
+            output_print_line(ctx, xoffset + 62.0, 4, ":", 10, FALSE, PANGO_ALIGN_CENTER, FALSE);
+            output_print_line(ctx, xoffset + 68.0, 60, line[2], 10, FALSE, PANGO_ALIGN_LEFT, FALSE);
+            output_print_line(ctx, xoffset + 130.0, 20.0, line[0], 10, FALSE, PANGO_ALIGN_RIGHT, FALSE);
             output_page_context_partial_line_end(ctx);
         }
     }
@@ -503,6 +564,7 @@ gboolean output_print(RinksTournament *tournament, const gchar *filename)
 
     }
 
+    output_print_footer(&page);
     output_page_context_free(&page);
     
     return TRUE;
