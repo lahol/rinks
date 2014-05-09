@@ -461,6 +461,7 @@ void ui_update_view(void)
 
 void ui_clear_tree_branch(GtkTreeModel *model, GtkTreeIter *iter)
 {
+    g_printf("clear tree branch\n");
     GQueue stack;
     g_queue_init(&stack);
 
@@ -484,9 +485,11 @@ void ui_clear_tree_branch(GtkTreeModel *model, GtkTreeIter *iter)
         }
         else {
             current = g_queue_pop_head(&stack);
+            g_printf("model ged col data\n");
             gtk_tree_model_get(model, current,
                     SIDEBAR_COLUMN_DATA, &rowdata,
                     -1);
+            g_printf("remove from model\n");
             gtk_tree_store_remove(GTK_TREE_STORE(model), current);
             g_free(rowdata);
         }

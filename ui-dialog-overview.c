@@ -92,8 +92,10 @@ void ui_dialog_overview_create_entry(RinksTournament *tournament, RinksOutputTyp
     gchar *content = output_format_plain(tournament, entry->output_type, entry->output_data, entry_data);
     
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(entry->output));
-    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(buffer), content, -1);
-    g_free(content);
+    if (content != NULL) {
+        gtk_text_buffer_set_text(GTK_TEXT_BUFFER(buffer), content, -1);
+        g_free(content);
+    }
 
     ui_dialog_overview_entries = g_list_prepend(ui_dialog_overview_entries, entry);
 }

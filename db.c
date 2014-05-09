@@ -550,7 +550,7 @@ void db_update_encounter(gpointer db_handle, RinksEncounter *encounter)
     int rc;
 
     gchar *sql = sqlite3_mprintf("update encounters set abstract_team1=%Q, abstract_team2=%Q, real_team1=%"\
-G_GINT64_FORMAT ", real_team2=%" G_GINT64_FORMAT ", round=% " G_GINT64_FORMAT ", game=%" G_GINT64_FORMAT\
+G_GINT64_FORMAT ", real_team2=%" G_GINT64_FORMAT ", round=%" G_GINT64_FORMAT ", game=%" G_GINT64_FORMAT\
 ", rink=%d where id=%" G_GINT64_FORMAT, encounter->abstract_team1, encounter->abstract_team2,
             encounter->real_team1, encounter->real_team2, encounter->round, encounter->game,
             encounter->rink, encounter->id);
@@ -582,7 +582,7 @@ GList *db_get_encounters(gpointer db_handle, gint64 round_id, gint64 game_id)
    
     if (round_id > 0 && game_id > 0)
         sql = sqlite3_mprintf("select * from encounters where round=%" G_GINT64_FORMAT " and game=%" G_GINT64_FORMAT " order by id desc",
-                                round_id);
+                                round_id, game_id);
     else if (round_id > 0)
         sql = sqlite3_mprintf("select * from encounters where round=%" G_GINT64_FORMAT " order by id desc",
                 round_id);
