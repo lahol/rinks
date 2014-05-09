@@ -57,7 +57,7 @@ void ui_dialog_games_create_entry(RinksTournament *tournament, RinksGame *game, 
     gchar *text;
 
     label = gtk_label_new("Beschreibung:");
-    gtk_table_attach(GTK_TABLE(table), label, 0, 1, 0, 1, 0, 0, 2, 2);
+    gtk_table_attach(GTK_TABLE(table), label, 0, 1, 0, 1, GTK_FILL, 0, 2, 2);
 
     entry->description = gtk_entry_new();
     gtk_entry_set_text(GTK_ENTRY(entry->description), game->description ? game->description : "");
@@ -77,9 +77,10 @@ void ui_dialog_games_create_entry(RinksTournament *tournament, RinksGame *game, 
     for (i = 0; i < nrinks; ++i) {
         text = g_strdup_printf("Rink %c:", (gchar)(i + 'A'));
         label = gtk_label_new(text);
+        gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
         g_free(text);
 
-        gtk_table_attach(GTK_TABLE(table), label, 0, 1, i + 1, i + 2, 0, 0, 2, 2);
+        gtk_table_attach(GTK_TABLE(table), label, 0, 1, i + 1, i + 2, GTK_FILL, 0, 2, 2);
 
         entry->encounters[i] = ui_helper_combo_widget_build(GTK_TREE_MODEL(ui_dialog_games_encounter_model));
 

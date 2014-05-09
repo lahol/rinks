@@ -6,7 +6,12 @@ GtkWidget *ui_create_main_window(void);
 
 void ui_set_action_callback(void (*callback)(gchar *action));
 
-gchar *ui_get_filename(GtkFileChooserAction action);
+typedef enum {
+    RINKS_FILE_TOURNAMENT,
+    RINKS_FILE_PDF
+} RinksFileType;
+
+gchar *ui_get_filename(GtkFileChooserAction action, RinksFileType type);
 
 typedef enum {
     VIEW_SETTINGS,

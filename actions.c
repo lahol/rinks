@@ -9,7 +9,7 @@ RinksActionCallbacks action_callbacks;
 
 RinksTournament *action_new_tournament(void)
 {
-    gchar *filename = ui_get_filename(GTK_FILE_CHOOSER_ACTION_SAVE);
+    gchar *filename = ui_get_filename(GTK_FILE_CHOOSER_ACTION_SAVE, RINKS_FILE_TOURNAMENT);
     if (filename == NULL)
         return NULL;
 
@@ -24,7 +24,7 @@ RinksTournament *action_new_tournament(void)
 
 RinksTournament *action_open_tournament(void)
 {
-    gchar *filename = ui_get_filename(GTK_FILE_CHOOSER_ACTION_OPEN);
+    gchar *filename = ui_get_filename(GTK_FILE_CHOOSER_ACTION_OPEN, RINKS_FILE_TOURNAMENT);
     if (filename == NULL)
         return NULL;
 

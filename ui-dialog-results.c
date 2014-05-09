@@ -62,7 +62,8 @@ void ui_dialog_results_add_entry(GtkWidget *table, gint offset,
             label = gtk_label_new("Team nicht gesetzt");
             result = NULL;
         }
-        gtk_table_attach(GTK_TABLE(table), label, 0, 1, offset + i, offset + i + 1, 0, 0, 2, 2);
+        gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+        gtk_table_attach(GTK_TABLE(table), label, 0, 1, offset + i, offset + i + 1, GTK_FILL, 0, 2, 2);
 
         entry->points[i] = gtk_entry_new();
         gtk_entry_set_width_chars(GTK_ENTRY(entry->points[i]), 2);
@@ -115,9 +116,26 @@ void ui_dialog_results_create_entries(void)
 
     if (encounters == 0)
         return;
-    ui_dialog_results_table = gtk_table_new(2*nencounters, 4, FALSE);
+    ui_dialog_results_table = gtk_table_new(2*nencounters + 1, 4, FALSE);
 
-    for (tmp = encounters, offset = 0; tmp != NULL; tmp = g_list_next(tmp), offset += 2) {
+    GtkWidget *label;
+    label = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(label), "<b>Team</b>");
+    gtk_table_attach(GTK_TABLE(ui_dialog_results_table), label, 0, 1, 0, 1, GTK_FILL, 0, 2, 2);
+    gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+    label = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(label), "<b>Punkte</b>");
+    gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+    gtk_table_attach(GTK_TABLE(ui_dialog_results_table), label, 1, 2, 0, 1, GTK_FILL, 0, 2, 2);
+    label = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(label), "<b>Ends</b>");
+    gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+    gtk_table_attach(GTK_TABLE(ui_dialog_results_table), label, 2, 3, 0, 1, GTK_FILL, 0, 2, 2);
+    label = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(label), "<b>Steine</b>");
+    gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+    gtk_table_attach(GTK_TABLE(ui_dialog_results_table), label, 3, 4, 0, 1, GTK_FILL, 0, 2, 2);
+    for (tmp = encounters, offset = 1; tmp != NULL; tmp = g_list_next(tmp), offset += 2) {
         ui_dialog_results_add_entry(ui_dialog_results_table, offset,
                 tournament, (RinksEncounter *)tmp->data);
     }

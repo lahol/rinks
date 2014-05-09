@@ -375,7 +375,7 @@ GtkWidget *ui_create_main_window(void)
     return main_window;
 }
 
-gchar *ui_get_filename(GtkFileChooserAction action)
+gchar *ui_get_filename(GtkFileChooserAction action, RinksFileType type)
 {
     gchar *filename = NULL;
 
@@ -388,11 +388,19 @@ gchar *ui_get_filename(GtkFileChooserAction action)
 
     GtkFileFilter *filter;
 
-    filter = gtk_file_filter_new();
-    gtk_file_filter_set_name(filter, "Turnier-Dateien");
-    gtk_file_filter_add_pattern(filter, "*.rnk");
-    gtk_file_filter_add_pattern(filter, "*.rinks");
-    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+    if (type == RINKS_FILE_TOURNAMENT) {
+        filter = gtk_file_filter_new();
+        gtk_file_filter_set_name(filter, "Turnier-Dateien");
+        gtk_file_filter_add_pattern(filter, "*.rnk");
+        gtk_file_filter_add_pattern(filter, "*.rinks");
+        gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+    }
+    else if (type == RINKS_FILE_PDF) {
+        filter = gtk_file_filter_new();
+        gtk_file_filter_set_name(filter, "PDF-Dateien");
+        gtk_file_filter_add_pattern(filter, "*.pdf");
+        gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+    }
 
     filter = gtk_file_filter_new();
     gtk_file_filter_set_name(filter, "Alle Dateien");
@@ -400,7 +408,10 @@ gchar *ui_get_filename(GtkFileChooserAction action)
     gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
     
     if (action == GTK_FILE_CHOOSER_ACTION_SAVE) {
-        gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "Neues Turnier.rnk");
+        if (type == RINKS_FILE_TOURNAMENT)
+            gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "Neues Turnier.rnk");
+        else if (type == RINKS_FILE_PDF)
+            gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "Aushang.pdf");
     }
 
     gint res = gtk_dialog_run(GTK_DIALOG(dialog));
