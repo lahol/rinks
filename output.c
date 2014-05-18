@@ -5,7 +5,7 @@
 #include <cairo-pdf.h>
 #include <time.h>
 
-#define CAIRO_MM_PTS   (3.53)
+#define CAIRO_MM_PTS   (2.83)
 
 typedef struct {
     RinksOutputType type;
@@ -145,12 +145,12 @@ void output_page_context_output(struct OutputPageContext *ctx, gboolean orphan_r
 
 void output_print_skip_space(struct OutputPageContext *ctx, gdouble space)
 {
-    if (space + ctx->yoffset > ctx->textheight) {
+    if (space * CAIRO_MM_PTS + ctx->yoffset > ctx->textheight) {
         cairo_show_page(ctx->cr);
         ctx->yoffset = ctx->margin[0];
     }
     else {
-        ctx->yoffset += space;
+        ctx->yoffset += space * CAIRO_MM_PTS;
     }
 }
 
@@ -547,17 +547,17 @@ gboolean output_print(RinksTournament *tournament, const gchar *filename)
     for (tmp = output_data; tmp != NULL; tmp = g_list_next(tmp)) {
         switch (((RinksOutputData *)tmp->data)->type) {
             case RinksOutputTypeRanking:
-                output_print_skip_space(&page, 10);
+                output_print_skip_space(&page, 5);
                 output_print_standings_complete(&page, 0.0, tournament);
                 break;
             case RinksOutputTypeRankingGroup:
-                output_print_skip_space(&page, 10);
+                output_print_skip_space(&page, 5);
                 output_print_group_standings(&page, 0.0, tournament, (gint32)((RinksOutputData *)tmp->data)->data);
                 break;
             case RinksOutputTypeRoundEncounter:
                 break;
             case RinksOutputTypeGameEncounter:
-                output_print_skip_space(&page, 10);
+                output_print_skip_space(&page, 5);
                 output_print_game_encounter(&page, 0.0, tournament, ((RinksOutputData *)tmp->data)->data);
                 break;
         }

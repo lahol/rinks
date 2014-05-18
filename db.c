@@ -177,7 +177,11 @@ RinksTeam *db_get_team(gpointer db_handle, gint64 team_id)
 
     int col_count, col;
 
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("select * from teams where id=%lld", team_id);
+#else
     gchar *sql = sqlite3_mprintf("select * from teams where id=%" G_GINT64_FORMAT, team_id);
+#endif
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     sqlite3_free(sql);
 
@@ -357,7 +361,11 @@ RinksRound *db_get_round(gpointer db_handle, gint64 round_id)
 
     int col_count, col;
 
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("select * from rounds where id=%lld", round_id);
+#else
     gchar *sql = sqlite3_mprintf("select * from rounds where id=%" G_GINT64_FORMAT, round_id);
+#endif
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     sqlite3_free(sql);
 
@@ -416,10 +424,17 @@ void db_update_round(gpointer db_handle, RinksRound *round)
 
     int rc;
 
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("update rounds set type=%d, description=%Q, range_start=%d,\
+range_end=%d where id=%lld",
+            round->type, round->description, round->range_start,
+            round->range_end, round->id);
+#else
     gchar *sql = sqlite3_mprintf("update rounds set type=%d, description=%Q, range_start=%d,\
 range_end=%d where id=%" G_GINT64_FORMAT,
             round->type, round->description, round->range_start,
             round->range_end, round->id);
+#endif
 
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
     sqlite3_free(sql);
@@ -442,8 +457,13 @@ void db_round_update_flag(gpointer db_handle, gint64 round_id, guint flag, gbool
 
     g_printf("db update flags: 0x%x\n", round->flags);
 
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("update rounds set flags=%u where id=%lld",
+            round->flags, round_id);
+#else
     gchar *sql = sqlite3_mprintf("update rounds set flags=%u where id=%" G_GINT64_FORMAT,
             round->flags, round_id);
+#endif
     gchar *err = NULL;
     int rc;
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, &err);
@@ -525,9 +545,15 @@ gint64 db_add_encounter(gpointer db_handle, gint64 round_id,
 
     int rc;
 
+#ifdef WIN32
+    char *sql = sqlite3_mprintf("insert into encounters (round,abstract_team1,abstract_team2,game,rink) values (%lld\
+,%Q,%Q,-1,-1)",
+            round_id, abstr_team1, abstr_team2);
+#else
     char *sql = sqlite3_mprintf("insert into encounters (round,abstract_team1,abstract_team2,game,rink) values (%"\
 G_GINT64_FORMAT ",%Q,%Q,-1,-1)",
             round_id, abstr_team1, abstr_team2);
+#endif
 
     gchar *err = NULL;
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, &err);
@@ -549,11 +575,18 @@ void db_update_encounter(gpointer db_handle, RinksEncounter *encounter)
 
     int rc;
 
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("update encounters set abstract_team1=%Q, abstract_team2=%Q, real_team1=%lld
+, real_team2=%lld, round=%lld, game=%lld, rink=%d where id=%lld", encounter->abstract_team1, encounter->abstract_team2,
+            encounter->real_team1, encounter->real_team2, encounter->round, encounter->game,
+            encounter->rink, encounter->id);
+#else
     gchar *sql = sqlite3_mprintf("update encounters set abstract_team1=%Q, abstract_team2=%Q, real_team1=%"\
 G_GINT64_FORMAT ", real_team2=%" G_GINT64_FORMAT ", round=%" G_GINT64_FORMAT ", game=%" G_GINT64_FORMAT\
 ", rink=%d where id=%" G_GINT64_FORMAT, encounter->abstract_team1, encounter->abstract_team2,
             encounter->real_team1, encounter->real_team2, encounter->round, encounter->game,
             encounter->rink, encounter->id);
+#endif
 
     gchar *sql_err = NULL;
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, &sql_err);
@@ -580,15 +613,33 @@ GList *db_get_encounters(gpointer db_handle, gint64 round_id, gint64 game_id)
 
     char *sql;
    
-    if (round_id > 0 && game_id > 0)
+    if (round_id > 0 && game_id > 0) {
+#ifdef WIN32
+        sql = sqlite3_mprintf("select * from encounters where round=%lld and game=%lld order by id desc",
+                                round_id, game_id);
+#else
         sql = sqlite3_mprintf("select * from encounters where round=%" G_GINT64_FORMAT " and game=%" G_GINT64_FORMAT " order by id desc",
                                 round_id, game_id);
-    else if (round_id > 0)
+#endif
+    }
+    else if (round_id > 0) {
+#ifdef WIN32
+        sql = sqlite3_mprintf("select * from encounters where round=%lld order by id desc",
+                round_id);
+#else
         sql = sqlite3_mprintf("select * from encounters where round=%" G_GINT64_FORMAT " order by id desc",
                 round_id);
-    else if (game_id > 0)
+#endif
+    }
+    else if (game_id > 0) {
+#ifdef WIN32
+        sql = sqlite3_mprintf("select * from encounters where game=%lld order by id desc",
+                game_id);
+#else
         sql = sqlite3_mprintf("select * from encounters where game=%" G_GINT64_FORMAT " order by id desc",
                 game_id);
+#endif
+    }
     else
         sql = sqlite3_mprintf("select * from encounters order by id desc");
 
@@ -636,7 +687,11 @@ RinksEncounter *db_get_encounter(gpointer db_handle, gint64 encounter_id)
 
     int col_count, col;
 
+#ifdef WIN32
+    char *sql = sqlite3_mprintf("select * from encounters where id=%lld", encounter_id);
+#else
     char *sql = sqlite3_mprintf("select * from encounters where id=%" G_GINT64_FORMAT, encounter_id);
+#endif
 
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     sqlite3_free(sql);
@@ -677,9 +732,15 @@ gboolean db_existed_encounter_before(gpointer db_handle, gint64 round_id, gint64
     sqlite3_stmt *stmt = NULL;
     gint count = 0;
 
+#ifdef WIN32
+    char *sql = sqlite3_mprintf("select count(*) from encounters where (real_team1=%lld and real_team2=%lld)\
+or (real_team1=%lld and real_team2=%lld) and round < %lld",
+            team1, team2, team2, team1, round_id);
+#else
     char *sql = sqlite3_mprintf("select count(*) from encounters where (real_team1=%" G_GINT64_FORMAT " and real_team2=%"\
 G_GINT64_FORMAT ") or (real_team1=%" G_GINT64_FORMAT " and real_team2=%" G_GINT64_FORMAT ") and round < %" G_GINT64_FORMAT,
             team1, team2, team2, team1, round_id);
+#endif
 
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -706,8 +767,13 @@ void db_encounter_set_game(gpointer db_handle, gint64 encounter_id, gint64 game_
     int rc;
     if (encounter_id <= 0)
         return;
+#ifdef WIN32
+    char *sql = sqlite3_mprintf("update encounters set game=%lld where id=%lld",
+            game_id, encounter_id);
+#else
     char *sql = sqlite3_mprintf("update encounters set game=%" G_GINT64_FORMAT " where id=%" G_GINT64_FORMAT,
             game_id, encounter_id);
+#endif
 
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
     sqlite3_free(sql);
@@ -783,7 +849,11 @@ RinksGame *db_get_game(gpointer db_handle, gint64 game_id)
     RinksGame *game = NULL;
 
     int col_count, col;
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("select * from games where id=%lld", game_id);
+#else
     gchar *sql = sqlite3_mprintf("select * from games where id=%" G_GINT64_FORMAT, game_id);
+#endif
 
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     sqlite3_free(sql);
@@ -822,8 +892,14 @@ void db_update_game(gpointer db_handle, RinksGame *game)
         return;
 
     int rc;
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("update games set description=%Q, closed=%d, sequence=%d where id=%lld",
+            game->description, game->closed, game->sequence, game->id);
+#else
     gchar *sql = sqlite3_mprintf("update games set description=%Q, closed=%d, sequence=%d where id=%" G_GINT64_FORMAT,
             game->description, game->closed, game->sequence, game->id);
+#endif
+
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
     sqlite3_free(sql);
 
@@ -838,8 +914,14 @@ void db_set_result(gpointer db_handle, RinksResult *result)
     
     int rc;
     gchar *sql;
+#ifdef WIN32
+    sql = sqlite3_mprintf("update results set points=%d, ends=%d, stones=%d where team=%lld and encounter=%lld",
+                result->points, result->ends, result->stones, result->team, result->encounter);
+#else
     sql = sqlite3_mprintf("update results set points=%d, ends=%d, stones=%d where team=%" G_GINT64_FORMAT " and encounter=%" G_GINT64_FORMAT,
                 result->points, result->ends, result->stones, result->team, result->encounter);
+#endif
+
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
     sqlite3_free(sql);
 
@@ -847,9 +929,15 @@ void db_set_result(gpointer db_handle, RinksResult *result)
         return;
 
     if (sqlite3_changes(db_handle) == 0) {
+#ifdef WIN32
+        sql = sqlite3_mprintf("insert into results (team,encounter,points,ends,stones) values (\
+%lld, %lld, %d, %d, %d)",
+                result->team, result->encounter, result->points, result->ends, result->stones);
+#else
         sql = sqlite3_mprintf("insert into results (team,encounter,points,ends,stones) values (\
 %" G_GINT64_FORMAT ", %" G_GINT64_FORMAT ", %d, %d, %d)",
                 result->team, result->encounter, result->points, result->ends, result->stones);
+#endif
         sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
         sqlite3_free(sql);
     }
@@ -865,8 +953,13 @@ RinksResult *db_get_result(gpointer db_handle, gint64 encounter, gint64 team)
 
     int col_count, col;
 
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("select results.*, encounters.round, encounters.game from results left outer join encounters on results.encounter=encounters.id where encounter=%lld and team=%lld",
+            encounter, team);
+#else
     gchar *sql = sqlite3_mprintf("select results.*, encounters.round, encounters.game from results left outer join encounters on results.encounter=encounters.id where encounter=%" G_GINT64_FORMAT " and team=%" G_GINT64_FORMAT ,
             encounter, team);
+#endif
     rc = sqlite3_prepare_v2(db_handle, sql, -1, &stmt, NULL);
     sqlite3_free(sql);
 
@@ -911,9 +1004,15 @@ GList *db_get_team_results(gpointer db_handle, gint64 team)
 
     gchar *sql;
    
-    if (team > 0)
+    if (team > 0) {
+#ifdef WIN32
+        sql = sqlite3_mprintf("select results.*, encounters.round, encounters.game from results \
+left outer join encounters on results.encounter=encounters.id where team=%lld order by encounter desc", team);
+#else
         sql = sqlite3_mprintf("select results.*, encounters.round, encounters.game from results \
 left outer join encounters on results.encounter=encounters.id where team=%" G_GINT64_FORMAT " order by encounter desc", team);
+#endif
+    }
     else
         sql = sqlite3_mprintf("select results.*, encounters.round, encounters.game from results left outer join encounters on \
 results.encounter=encounters.id order by encounter desc");
@@ -957,9 +1056,14 @@ gint64 db_add_override(gpointer db_handle, RinksOverride *override)
 
     int rc;
 
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("insert into overrides (encounter,team1,team2) values (%lld, %lld, %lld)",
+            override->encounter, override->team1, override->team2);
+#else
     gchar *sql = sqlite3_mprintf("insert into overrides (encounter,team1,team2) values (%"\
 G_GINT64_FORMAT ", %" G_GINT64_FORMAT ", %" G_GINT64_FORMAT ")",
             override->encounter, override->team1, override->team2);
+#endif
 
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
     sqlite3_free(sql);
@@ -977,9 +1081,14 @@ void db_update_override(gpointer db_handle, RinksOverride *override)
     g_return_if_fail(override != NULL);
 
     int rc;
+#ifdef WIN32
+    gchar *sql = sqlite3_mprintf("update overrides set encounter=%lld, team1=%lld, team2=%lld where id=%lld",
+            override->encounter, override->team1, override->team2, override->id);
+#else
     gchar *sql = sqlite3_mprintf("update overrides set encounter=%" G_GINT64_FORMAT ", team1=%" G_GINT64_FORMAT\
 ", team2=%" G_GINT64_FORMAT " where id=%" G_GINT64_FORMAT,
             override->encounter, override->team1, override->team2, override->id);
+#endif
 
     rc = sqlite3_exec(db_handle, sql, NULL, NULL, NULL);
     sqlite3_free(sql);
