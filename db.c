@@ -1,3 +1,8 @@
+/*
+ * rinks -- tournament planner for curling
+ * (c) 2014 Holger Langenau (see also: LICENSE)
+ *
+ */
 #include "db.h"
 #include <sqlite3.h>
 #include <glib/gprintf.h>

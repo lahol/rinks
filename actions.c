@@ -1,3 +1,8 @@
+/*
+ * rinks -- tournament planner for curling
+ * (c) 2014 Holger Langenau (see also: LICENSE)
+ *
+ */
 #include "actions.h"
 #include "db.h"
 #include "tournament.h"

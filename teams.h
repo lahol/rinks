@@ -1,6 +1,11 @@
+/*
+ * rinks -- tournament planner for curling
+ * (c) 2014 Holger Langenau (see also: LICENSE)
+ *
+ */
 #pragma once
 
-#include "data.h"
+#include <glib.h>
 
 typedef struct {
     gint64 id;
