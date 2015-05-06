@@ -1,0 +1,3 @@
+ * Warn if encounter was entered in previous game/double entries/missing entries
+ * Translate entities before pango output (&)
+ * Widow/Club removal for headings
