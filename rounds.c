@@ -326,20 +326,22 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
     gboolean conflict = FALSE;
     for (i = 0; i < nteams; i += 2) {
         j = i + 1;
-        while (j < nteams &&
-                rounds_existed_encounter_before(all_encounters,
-                    current[i], current[j], round->id)) {
-            ++j;
-        }
-        if (j == nteams) {
-            conflict = TRUE;
-            break;
+        if (!(round->flags & RinksRoundFlagAllowReencounters)) {
+            while (j < nteams &&
+                    rounds_existed_encounter_before(all_encounters,
+                        current[i], current[j], round->id)) {
+                ++j;
+            }
+            if (j == nteams) {
+                conflict = TRUE;
+                break;
+            }
         }
         stack_entry = round_matching_stack_entry_new(current, nteams, i, j);
         g_queue_push_head(stack, stack_entry);
         util_array_move_element(current, j, i + 1);
         /* set next encounter correctly */
-        j = i + 3;
+        j = i + 3; /*????*/
     }
 
     if (!conflict) {

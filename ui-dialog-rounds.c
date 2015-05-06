@@ -22,9 +22,10 @@ struct UiDialogRoundsEntry {
     GtkWidget *round_type;
     GtkWidget *round_start;
     GtkWidget *round_end;
+    GtkWidget *round_allow_previous_encounters;
 };
 
-#define ROUNDS_ENTRY_LENGTH     6
+#define ROUNDS_ENTRY_LENGTH     7
 
 GList *ui_dialog_rounds_entries = NULL; /* [element-type: struct UiDialogRoundsEntry] */
 
@@ -51,8 +52,19 @@ void ui_dialog_rounds_apply_cb(gpointer data)
         round.type = gtk_combo_box_get_active(GTK_COMBO_BOX(entry->round_type));
         round.range_start = gtk_combo_box_get_active(GTK_COMBO_BOX(entry->round_start)) + 1;
         round.range_end = gtk_combo_box_get_active(GTK_COMBO_BOX(entry->round_end)) + 1;
+        if (gtk_toggle_button_get_active(
+                    GTK_TOGGLE_BUTTON(entry->round_allow_previous_encounters))) {
+            round.flags |= RinksRoundFlagAllowReencounters;
+        }
+        else {
+            round.flags &= ~RinksRoundFlagAllowReencounters;
+        }
 
         tournament_update_round(tournament, &round);
+        if (round.flags & RinksRoundFlagAllowReencounters)
+            tournament_round_set_flag(tournament, round.id, RinksRoundFlagAllowReencounters);
+        else
+            tournament_round_unset_flag(tournament, round.id, RinksRoundFlagAllowReencounters);
         g_free(round.description);
     }
 }
@@ -229,6 +241,11 @@ void ui_dialog_rounds_add_entry(GtkWidget *table, gint offset, RinksRound *round
     gtk_table_attach(GTK_TABLE(table), button, 5, 6, offset, offset + 1, 0, 0, 2, 2);
     if (round->flags & RinksRoundFlagEncountersCreated)
         gtk_widget_set_sensitive(button, FALSE);
+
+    entry->round_allow_previous_encounters = gtk_check_button_new_with_label("Erlaube frühere Begegnungen");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(entry->round_allow_previous_encounters),
+            round->flags & RinksRoundFlagAllowReencounters);
+    gtk_table_attach(GTK_TABLE(table), entry->round_allow_previous_encounters, 6, 7, offset, offset +1, 0, 0, 2, 2);
 
     ui_dialog_rounds_entries = g_list_append(ui_dialog_rounds_entries, entry);
 }
