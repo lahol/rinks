@@ -82,6 +82,8 @@ void ui_dialog_overview_create_entry(RinksTournament *tournament, RinksOutputTyp
                 entry->output_data = ((RinksRound *)entry_data)->id;
             }
             break;
+        case RinksOutputTypeNone:
+            break;
     }
 
     entry->checkbox = gtk_check_button_new_with_label(label);

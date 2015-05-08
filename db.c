@@ -581,8 +581,8 @@ void db_update_encounter(gpointer db_handle, RinksEncounter *encounter)
     int rc;
 
 #ifdef WIN32
-    gchar *sql = sqlite3_mprintf("update encounters set abstract_team1=%Q, abstract_team2=%Q, real_team1=%lld
-, real_team2=%lld, round=%lld, game=%lld, rink=%d where id=%lld", encounter->abstract_team1, encounter->abstract_team2,
+    gchar *sql = sqlite3_mprintf("update encounters set abstract_team1=%Q, abstract_team2=%Q, real_team1=%lld,\
+ real_team2=%lld, round=%lld, game=%lld, rink=%d where id=%lld", encounter->abstract_team1, encounter->abstract_team2,
             encounter->real_team1, encounter->real_team2, encounter->round, encounter->game,
             encounter->rink, encounter->id);
 #else

@@ -331,6 +331,8 @@ gchar *output_format_plain(RinksTournament *tournament, RinksOutputType type, gi
             return output_format_game_plain(tournament, data, (RinksGame *)prefetched);
         case RinksOutputTypeRoundEncounter:
             return output_format_round_plain(tournament, data, (RinksRound *)prefetched);
+        case RinksOutputTypeNone:
+            break;
     }
     return NULL;
 }
@@ -549,7 +551,11 @@ gboolean output_print(RinksTournament *tournament, const gchar *filename)
     output_print_title(&page, 0.0, tournament);
 
     GList *tmp;
+    RinksOutputType last_type = RinksOutputTypeNone;
     for (tmp = output_data; tmp != NULL; tmp = g_list_next(tmp)) {
+        if (last_type != RinksOutputTypeNone && last_type != ((RinksOutputData *)tmp->data)->type)
+            output_print_skip_space(&page, 20);
+        last_type = ((RinksOutputData *)tmp->data)->type;
         switch (((RinksOutputData *)tmp->data)->type) {
             case RinksOutputTypeRanking:
                 output_print_skip_space(&page, 5);
@@ -564,6 +570,8 @@ gboolean output_print(RinksTournament *tournament, const gchar *filename)
             case RinksOutputTypeGameEncounter:
                 output_print_skip_space(&page, 5);
                 output_print_game_encounter(&page, 0.0, tournament, ((RinksOutputData *)tmp->data)->data);
+                break;
+            case RinksOutputTypeNone:
                 break;
         }
 

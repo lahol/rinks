@@ -12,7 +12,8 @@ typedef enum {
     RinksOutputTypeRanking,
     RinksOutputTypeRankingGroup,
     RinksOutputTypeRoundEncounter, 
-    RinksOutputTypeGameEncounter /* encounters of game in data */
+    RinksOutputTypeGameEncounter, /* encounters of game in data */
+    RinksOutputTypeNone
 } RinksOutputType;
 
 void output_init(void);
