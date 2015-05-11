@@ -15,7 +15,8 @@ points not very intuitive (e.g. you can make all settings but nothing happens be
 you forgot to create a game).
 
 But I’m happy to mention that it was already successfully used in the celebratory
-tournament of the Curling Club in Chemnitz in May 2014.
+tournament of the Curling Club in Chemnitz in May 2014 as well as the 5th international
+Curling Tournament in Chemnitz in May 2015.
 
 Main critic points:
 
