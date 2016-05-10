@@ -3,9 +3,11 @@
  * Widow/Club removal for headings
  * Try to map encounters to rinks such that each team plays only a minimal number of times on a specific rink
    (per game/per round/off)
- * Prepare scorecards (for each game, blanko for each round beforehand
+ * Prepare scorecards (for each game, blanko for each round beforehand) (team, date, single ends, total, points, ends, stones, signature, hammer)
  * make format of output configurable (font + size, header format, etc. -> style.db; select style for output)
  * make apply-button print selected on output dialog
  * output results of previous rounds
  * time for output: last change not output generation (meta-table?)
  * Save who has the hammer.
+ * allow generation of final ranking with closed final
+ * gtk3 conversion
