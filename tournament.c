@@ -253,6 +253,15 @@ gint64 tournament_add_encounter(RinksTournament *tournament, gint64 round_id,
     return db_add_encounter(tournament->db_handle, round_id, abstr_team1, abstr_team2);
 }
 
+gint64 tournament_add_encounter_full(RinksTournament *tournament, gint64 round_id,
+                                     const gchar *abstr_team1, const gchar *abstr_team2,
+                                     gint64 real_team1, gint64 real_team2)
+{
+    g_return_val_if_fail(tournament != NULL, -1);
+
+    return db_add_encounter_full(tournament->db_handle, round_id, abstr_team1, abstr_team2, real_team1, real_team2);
+}
+
 void tournament_update_encounter(RinksTournament *tournament, RinksEncounter *encounter)
 {
     g_return_if_fail(tournament != NULL);

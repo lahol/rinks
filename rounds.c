@@ -89,6 +89,8 @@ void rounds_create_encounters_group(RinksTournament *tournament, RinksRound *rou
     }
     if (team1)
         g_printf("error: odd number of teams\n");
+
+    g_list_free_full(teams, (GDestroyNotify)team_free);
 }
 
 void rounds_create_encounters_all(RinksTournament *tournament, RinksRound *round)
@@ -108,6 +110,47 @@ void rounds_create_encounters_all(RinksTournament *tournament, RinksRound *round
     }
 }
 
+void rounds_create_encounters_round_robin(RinksTournament *tournament, RinksRound *round)
+{
+    GList *teams = tournament_get_teams(tournament);
+    teams = teams_sort(teams, RinksTeamSortGroupNoStanding);
+
+    GList *team1, *team2;
+    gchar *abstr_team1 = NULL;
+    gchar *abstr_team2 = NULL;
+
+    team2 = teams;
+
+    gint32 p1, p2;
+    gint32 current_group;
+    gint64 id;
+
+    g_printf("rounds create encounters round robin\n");
+    while (team2) {
+        current_group = ((RinksTeam *)team2->data)->group_id;
+        g_printf("team2: %p, cur group: %u\n", team2, current_group);
+        for (team1 = team2, p1 = 1;
+             team1 && ((RinksTeam *)team1->data)->group_id == current_group;
+             team1 = g_list_next(team1), ++p1) {
+            g_printf("team1: %p, p1: %u\n", team1, p1);
+            for (team2 = g_list_next(team1), p2 = p1 + 1;
+                 team2 && ((RinksTeam *)(team2->data))->group_id == ((RinksTeam *)(team1->data))->group_id;
+                 team2 = g_list_next(team2), ++p2) {
+                g_printf("team2: %p, p2: %u\n", team2, p2);
+                abstr_team1 = g_strdup_printf("rr%d:%d", ((RinksTeam *)team1->data)->group_id, p1);
+                abstr_team2 = g_strdup_printf("rr%d:%d", ((RinksTeam *)team2->data)->group_id, p2);
+                g_printf("add encounter %lld, %s vs %s\n", round->id, abstr_team1, abstr_team2);
+                id = tournament_add_encounter_full(tournament, round->id, abstr_team1, abstr_team2,
+                        ((RinksTeam *)team1->data)->id, ((RinksTeam *)team2->data)->id);
+                g_free(abstr_team1);
+                g_free(abstr_team2);
+            }
+        }
+    }
+
+    g_list_free_full(teams, (GDestroyNotify)team_free);
+}
+
 void rounds_create_encounters(gint64 round_id)
 {
     RinksTournament *tournament = application_get_current_tournament();
@@ -124,6 +167,7 @@ void rounds_create_encounters(gint64 round_id)
             rounds_create_encounters_all(tournament, round);
             break;
         case ROUND_TYPE_ROUND_ROBIN:
+            rounds_create_encounters_round_robin(tournament, round);
             break;
     }
 
@@ -289,8 +333,8 @@ void rounds_map_encounters_for_round(RinksTournament *tournament, GList *map_tea
     guint32 nteams = g_list_length(map_teams);
     guint32 nencounters = g_list_length(map_encounters);
 
-    if (nteams != 2 * nencounters)
-        g_printf("error: number of teams and encounters not matching\n");
+    if (nteams != 2 * nencounters && round->type != ROUND_TYPE_ROUND_ROBIN)
+        g_printf("error: number of teams and encounters not matching (%u vs %u)\n", nteams, 2 * nencounters);
     gint64 *teams = g_malloc(sizeof(gint64) * nteams);
     gint64 *teams_orig = g_malloc(sizeof(gint64) * nteams);
     gint64 *teams_result = NULL, *current = NULL;
@@ -459,6 +503,9 @@ void rounds_update_encounters(void)
                 g_list_free(teams_sliced);
                 break;
             case ROUND_TYPE_ROUND_ROBIN:
+/*                teams = teams_sort(teams, RinksTeamSortGroupNoStanding);
+                g_printf("Map encounters for round robin\n");*/
+                /* nothing to map */
                 break;
         }
 

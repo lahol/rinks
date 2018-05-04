@@ -47,6 +47,11 @@ gboolean encounters_encounter_parse_abstract_team(RinksEncounter *encounter, gin
         if (rc < 1)
             return FALSE;
     }
+    else if (str[0] == 'r' && str[1] == 'r') {
+        rc = sscanf(str, "rr%d:%d", &g, &p);
+        if (rc < 2)
+            return FALSE;
+    }
     else {
         return FALSE;
     }

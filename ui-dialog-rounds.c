@@ -180,8 +180,8 @@ void ui_dialog_rounds_init_type_widget(GtkWidget *combobox, gint selection)
             "Nachbar in Gruppe");
     gtk_combo_box_text_insert_text(GTK_COMBO_BOX_TEXT(combobox), ROUND_TYPE_NEXT_TO_ALL,
             "Nachbar in Gesamtrangliste");
-/*    gtk_combo_box_text_insert_text(GTK_COMBO_BOX_TEXT(combobox), ROUND_TYPE_ROUND_ROBIN,
-            "Round Robin");*/
+    gtk_combo_box_text_insert_text(GTK_COMBO_BOX_TEXT(combobox), ROUND_TYPE_ROUND_ROBIN,
+            "Round Robin");
 
     if (selection >= 0) {
         gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), selection);

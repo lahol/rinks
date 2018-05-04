@@ -573,6 +573,37 @@ G_GINT64_FORMAT ",%Q,%Q,-1,-1)",
     return sqlite3_last_insert_rowid(db_handle);
 }
 
+gint64 db_add_encounter_full(gpointer db_handle, gint64 round_id,
+                             const gchar *abstr_team1, const gchar *abstr_team2,
+                             gint64 real_team1, gint64 real_team2)
+{
+    g_return_val_if_fail(db_handle != NULL, -1);
+
+    int rc;
+
+#ifdef WIN32
+    char *sql = sqlite3_mprintf("insert into encounters (round,abstract_team1,abstract_team2,real_team1,real_team2,game,rink) values (%lld\
+,%Q,%Q,%lld,%lld,-1,-1)",
+            round_id, abstr_team1, abstr_team2, real_team1, real_team2);
+#else
+    char *sql = sqlite3_mprintf("insert into encounters (round,abstract_team1,abstract_team2,real_team1,real_team2,game,rink) values (%"\
+G_GINT64_FORMAT ",%Q,%Q,%" G_GINT64_FORMAT ",%" G_GINT64_FORMAT ",-1,-1)",
+            round_id, abstr_team1, abstr_team2, real_team1, real_team2);
+#endif
+
+    gchar *err = NULL;
+    rc = sqlite3_exec(db_handle, sql, NULL, NULL, &err);
+    sqlite3_free(sql);
+
+    if (rc != SQLITE_OK) {
+        g_printf("db error: %s\n", err);
+        sqlite3_free(err);
+        return -1;
+    }
+
+    return sqlite3_last_insert_rowid(db_handle);
+}
+
 void db_update_encounter(gpointer db_handle, RinksEncounter *encounter)
 {
     g_return_if_fail(db_handle != NULL);
